@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #fff;
+            --text-color: #eee;
+            --label-color: #d1d1d1;
+            --accent-color: #3772ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden; /* Prevents scrollbars from the animated background */
+            background: linear-gradient(45deg, #0f0c29, #302b63, #24243e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 3rem 2.5rem;
+            margin: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            animation: fadeIn 1s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .auth-header h2 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            position: relative;
+            margin-bottom: 1.75rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 40px 12px 15px; /* Added right padding for the icon */
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: var(--primary-color);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        
+        .form-label {
+            position: absolute;
+            top: 13px;
+            left: 15px;
+            color: var(--label-color);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        
+        /* Floating label animation */
+        .form-control:focus + .form-label,
+        .form-control:not(:placeholder-shown) + .form-label {
+            top: -10px;
+            left: 10px;
+            font-size: 0.8rem;
+            background: #2a2658; /* Match background to create "cut-out" effect */
+            padding: 0 5px;
+            color: var(--accent-color);
+        }
+        
+        /* NEW: Styles for the eye icon */
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            color: var(--label-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-password:hover {
+            color: var(--primary-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-color);
+            color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #275dce;
+            box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .auth-links {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--label-color);
+        }
+        
+        .auth-links a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .flash-message {
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            background: rgba(255, 82, 82, 0.2);
+            color: #ffc8c8;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h2>Login</h2>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-message">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <input type="text" id="username" name="username" class="form-control" placeholder=" " required>
+                <label for="username" class="form-label">Username</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" name="password" class="form-control" placeholder=" " required>
+                <label for="password" class="form-label">Password</label>
+                <i class="fas fa-eye toggle-password" id="togglePassword"></i>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+        
+        <div class="auth-links">
+            <p>Don't have an account? <a href="/register">Register</a></p>
+        </div>
+    </div>
+
+    <script>
+        const togglePassword = document.getElementById('togglePassword');
+        const password = document.getElementById('password');
+
+        togglePassword.addEventListener('click', function (e) {
+            // Toggle the type attribute
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            // Toggle the eye / eye-slash icon
+            this.classList.toggle('fa-eye-slash');
+        });
+    </script>
+</body>
+</html>

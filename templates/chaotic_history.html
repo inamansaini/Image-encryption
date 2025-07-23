@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaotic Encryption History</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/chaotic_history.css">
+</head>
+<body>
+    <nav class="nav">
+        <a href="{{ url_for('chaotic') }}">
+            <i class="fas fa-arrow-left"></i> Back to Chaotic Encryption
+        </a>
+        <a href="/logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </nav>
+
+    <main class="main-container">
+        <div class="page-header">
+            <h1><i class="fas fa-history"></i> Chaotic Encryption History</h1>
+            <p>A log of your past chaotic encryption operations</p>
+        </div>
+
+        {% if records %}
+            <div class="history-grid">
+                {% for record in records %}
+                <div class="history-card" id="record-{{ record.id }}">
+                    <button class="delete-btn" onclick="deleteRecord({{ record.id }})" title="Delete Record">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    
+                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</h3>
+                    
+                    <div class="image-gallery">
+                        <div class="image-item">
+                            <img src="/{{ record.original_path }}" alt="Original Image" onclick="openModal('/{{ record.original_path }}')">
+                            <p>Original</p>
+                        </div>
+                        <div class="image-item">
+                            <img src="/{{ record.encrypted_path }}" alt="Encrypted Image" onclick="openModal('/{{ record.encrypted_path }}')">
+                            <p>Encrypted</p>
+                            <button class="download-btn" 
+                                    onclick="downloadImage('{{ record.encrypted_path }}', 'encrypted_{{ record.id }}.png')" 
+                                    title="Download Encrypted Image">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="key-info">
+                        <button class="copy-key-btn" onclick="copyKey('{{ record.key }}')" title="Copy Key">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <strong><i class="fas fa-cogs"></i> Algo:</strong> {{ record.algorithm | capitalize }}<br>
+                        <strong><i class="fas fa-key"></i> Key:</strong>
+                        <span>{{ record.key }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-records">
+                <h2><i class="fas fa-inbox"></i> No History Found</h2>
+                <p>Perform an encryption to see its history here.</p>
+                <a href="{{ url_for('chaotic') }}" class="action-btn">
+                    <i class="fas fa-plus"></i> Start New Encryption
+                </a>
+            </div>
+        {% endif %}
+    </main>
+
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close" onclick="closeModal()" title="Close">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="Full Size Image">
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/chaotic_history.js"></script>
+</body>
+</html>

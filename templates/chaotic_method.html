@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaotic Encryption - Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/chaotic_style.css"> 
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-links">
+            <a href="/select_method"><i class="fas fa-arrow-left"></i> Back to Methods</a>
+            <a href="/chaotic_history"><i class="fas fa-history"></i> Operation History</a>
+        </div>
+        <a href="/logout" style="margin-left: auto;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </nav>
+
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-random"></i> Chaotic Image Encryption</h1>
+            <p>Scramble pixels using chaos theory for enhanced security</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-lock"></i> Encrypt Image</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="originalImage"><i class="fas fa-image"></i> Original Image</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="originalImage" class="file-input" accept="image/*">
+                        <label for="originalImage" class="file-input-button">
+                            <i class="fas fa-upload"></i> <span id="original-filename">Choose Image</span>
+                        </label>
+                    </div>
+                    <div class="preview-container" id="original-preview-container"><img id="originalPreview" class="preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="chaosType"><i class="fas fa-project-diagram"></i> Chaos Algorithm</label>
+                    <select id="chaosType" class="text-input">
+                        <option value="logistic">Logistic Map</option>
+                        <option value="henon">Henon Map</option>
+                        <option value="arnold">Arnold Cat Map</option>
+                    </select>
+                    
+                    <label for="chaosKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Encryption Key (optional)</label>
+                    <input type="text" id="chaosKey" class="text-input" placeholder="Leave blank for auto-generated key">
+                </div>
+            </div>
+
+            <button id="encryptBtn" class="btn btn-primary btn-block"><i class="fas fa-random"></i> Encrypt Image</button>
+
+            <div id="encryptedSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Encryption Complete!</h3>
+                <div class="preview-container has-image"><img id="encryptedImage" class="preview"></div>
+                <div class="key-display">
+                    <p><strong>Encryption Key:</strong> <span id="keyDisplay"></span></p>
+                    <div class="key-actions">
+                        <button id="copyKeyBtn" class="btn btn-secondary"><i class="fas fa-copy"></i> Copy</button>
+                        <a id="downloadBtn" class="btn btn-success" download="encrypted_image.png"><i class="fas fa-download"></i> Download</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-unlock"></i> Decrypt Image</h2>
+                 <div class="form-grid">
+                     <div class="form-group">
+                        <label for="encryptedImageUpload"><i class="fas fa-file-image"></i> Encrypted Image</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="encryptedImageUpload" class="file-input" accept="image/*">
+                            <label for="encryptedImageUpload" class="file-input-button">
+                                <i class="fas fa-upload"></i> <span id="encrypted-filename">Choose Image</span>
+                            </label>
+                        </div>
+                        <div class="preview-container" id="encrypted-preview-container"><img id="encryptedPreview" class="preview"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="decryptChaosType"><i class="fas fa-project-diagram"></i> Chaos Algorithm</label>
+                        <select id="decryptChaosType" class="text-input">
+                            <option value="logistic">Logistic Map</option>
+                            <option value="henon">Henon Map</option>
+                            <option value="arnold">Arnold Cat Map</option>
+                        </select>
+                        <label for="decryptKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Decryption Key</label>
+                        <input type="text" id="decryptKey" class="text-input" placeholder="Enter your decryption key">
+                    </div>
+                 </div>
+
+            <button id="decryptBtn" class="btn btn-primary btn-block"><i class="fas fa-unlock"></i> Decrypt Image</button>
+
+            <div id="decryptedSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Decryption Complete!</h3>
+                <div class="preview-container has-image"><img id="decryptedImage" class="preview"></div>
+                <div class="key-actions">
+                    <a id="downloadDecryptedBtn" class="btn btn-success" download="decrypted_image.png"><i class="fas fa-download"></i> Download Decrypted Image</a>
+                </div>
+            </div>
+        </div>
+         <div class="info-card" style="grid-column: 1 / -1;">
+            <h3><i class="fas fa-info-circle"></i> How It Works</h3>
+            <p>This method leverages <strong>chaotic maps</strong>—mathematical functions that are highly sensitive to initial conditions. A secret key provides the starting values for the chosen chaotic algorithm (like Logistic, Henon, or Arnold Cat maps). The algorithm then generates a sequence of pseudo-random values used to systematically shuffle the positions of the image's pixels. The result is a completely scrambled and unrecognizable image. Decryption is only possible by applying the same chaotic map with the exact same initial key to reverse the pixel shuffling process.</p>
+        </div>
+    </div>
+    
+    <script src="/static/chaotic.js"></script>
+</body>
+</html>

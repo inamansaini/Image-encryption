@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Encryption - Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dna_based.css') }}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div>
+            <a href="{{ url_for('select_method') }}"><i class="fas fa-arrow-left"></i> Back to Methods</a>
+            <a href="{{ url_for('dna_history') }}"><i class="fas fa-history"></i> View History</a>
+        </div>
+        <div>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header" style="grid-column: 1 / -1;">
+            <h1><i class="fas fa-dna"></i> DNA-Based Encryption</h1>
+            <p>Secure your images by encoding pixel data into synthetic DNA sequences.</p>
+        </div>
+
+        <div class="io-card">
+            <h2><i class="fas fa-lock"></i> Encrypt Image</h2>
+            <form id="encryptForm" class="io-form">
+                <div class="file-drop-area">
+                    <i class="fas fa-upload icon-upload"></i>
+                    <p>Drag & Drop Image Here</p>
+                    <span>or</span>
+                    <label for="encryptImageFile" class="file-label">Choose File</label>
+                    <input type="file" id="encryptImageFile" name="image" required accept="image/*">
+                </div>
+                <img id="encryptPreview" class="image-preview" src="#" alt="Image Preview">
+                
+                <div class="input-group">
+                    <label for="encryptKey"><i class="fas fa-key"></i> Encryption Key (Optional)</label>
+                    <input type="text" id="encryptKey" name="key" placeholder="Leave blank to generate a key">
+                </div>
+                
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-shield-alt"></i> Encrypt
+                </button>
+            </form>
+            <div id="encryptResult" class="result-area"></div>
+        </div>
+
+        <div class="io-card">
+            <h2><i class="fas fa-lock-open"></i> Decrypt Image</h2>
+            <form id="decryptForm" class="io-form">
+                <div class="file-drop-area">
+                    <i class="fas fa-upload icon-upload"></i>
+                    <p>Drag & Drop Encrypted Image</p>
+                    <span>or</span>
+                    <label for="decryptImageFile" class="file-label">Choose File</label>
+                    <input type="file" id="decryptImageFile" name="image" required accept="image/*">
+                </div>
+                <img id="decryptPreview" class="image-preview" src="#" alt="Image Preview">
+                
+                <div class="input-group">
+                    <label for="decryptKey"><i class="fas fa-key"></i> Decryption Key</label>
+                    <input type="text" id="decryptKey" name="key" required placeholder="Enter the decryption key">
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-undo"></i> Decrypt
+                </button>
+            </form>
+            <div id="decryptResult" class="result-area"></div>
+        </div>
+        
+        <div class="info-card" style="grid-column: 1 / -1;">
+            <h3><i class="fas fa-info-circle"></i> How It Works</h3>
+            <p>This technique converts each pixel's color values into a unique sequence of DNA bases (A, C, G, T). A secret key is used to perform biologically-inspired operations like crossover and mutation on these sequences, effectively scrambling the image data. The process is reversed using the same key to reconstruct the original image. This multi-layered transformation makes it extremely difficult to crack.</p>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='dna_based.js') }}"></script>
+</body>
+</html>

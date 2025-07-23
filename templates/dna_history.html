@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Encryption History - Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dna_history.css') }}">
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div>
+            <a href="{{ url_for('dna_based') }}"><i class="fas fa-arrow-left"></i> Back to DNA Encryption</a>
+        </div>
+        <div>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="page-header">
+            <h1><i class="fas fa-dna"></i> DNA Encryption History</h1>
+            <p>Review your past DNA-based encryption and decryption operations.</p>
+        </div>
+
+        {% if records %}
+        <div class="history-grid">
+            {% for record in records %}
+            <div class="history-card" id="record-{{ record.id }}">
+                <button class="delete-btn" data-id="{{ record.id }}" title="Delete Record">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <h3>
+                    <i class="far fa-clock"></i>
+                    {{ record.created_at.strftime('%B %d, %Y - %I:%M %p') }}
+                </h3>
+                
+                <div class="image-gallery">
+                    <div class="image-item" title="Click to enlarge">
+                        <img src="{{ url_for('serve_temp_file', filename=record.original_path.split('/')[-1]) }}" alt="Original Image">
+                        <p>Original</p>
+                    </div>
+                    <div class="image-item" title="Click to enlarge">
+                        <img src="{{ url_for('serve_temp_file', filename=record.encrypted_path.split('/')[-1]) }}" alt="Encrypted Image">
+                        <p>Encrypted</p>
+                    </div>
+                </div>
+
+                <div class="key-info">
+                     <button class="copy-key-btn" title="Copy Key">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <strong><i class="fas fa-key"></i> Key:</strong>
+                    <span>{{ record.key }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-records">
+            <h2>No History Found</h2>
+            <p>You haven't performed any DNA-based encryptions yet.</p>
+            <a href="{{ url_for('dna_based') }}" class="action-btn">
+                <i class="fas fa-shield-alt"></i> Encrypt an Image Now
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="imageModal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="{{ url_for('static', filename='dna_history.js') }}"></script>
+</body>
+</html>

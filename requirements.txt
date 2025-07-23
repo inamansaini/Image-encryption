@@ -1,0 +1,22 @@
+﻿# Web Framework and Server
+Flask
+gunicorn
+Werkzeug
+python-dotenv
+
+# Image Processing and Scientific Computing
+opencv-python
+numpy
+
+# Machine Learning
+torch
+torchvision
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Cryptography
+cryptography
+pycryptodome
+
+# Cloud Services
+libsql-client
+cloudinary

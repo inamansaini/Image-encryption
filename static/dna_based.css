@@ -1,0 +1,331 @@
+/*
+ * Aurora Glass Theme for DNA-Based Encryption
+ * Version: 2.1 (Button Color Fix)
+ */
+
+/* --- CSS Variables --- */
+:root {
+    --primary-color: #fff;
+    --text-color: #eee;
+    --label-color: #d1d1d1;
+    --accent-color: #3772ff;
+    --success-color: #10b981;
+    --error-color: #f43f5e;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-hover-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Base & Body Styles --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(45deg, #0f0c29, #302b63, #24243e);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    color: var(--text-color);
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* --- Navigation --- */
+.top-nav {
+    width: 100%;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f0c29;
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.top-nav div, .top-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.top-nav a {
+    color: var(--label-color);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+}
+
+.top-nav a:hover {
+    color: var(--primary-color);
+    background: var(--glass-bg);
+}
+
+/* --- Main Layout --- */
+.container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem;
+    align-items: start;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+    .container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* --- Header --- */
+.page-header {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 0;
+}
+
+.page-header h1 {
+    font-weight: 600;
+    font-size: 2.2rem;
+    gap: 12px;
+}
+
+.page-header p {
+    color: var(--label-color);
+    font-size: 1.1rem;
+}
+
+/* --- Glassmorphism Cards --- */
+.io-card, .info-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+    padding: 1.5rem;
+    animation: fadeIn 1s ease-out;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.io-card h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.info-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-card p {
+    color: var(--label-color);
+    line-height: 1.7;
+}
+
+/* --- Form Elements --- */
+.io-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    flex-grow: 1;
+}
+
+.input-group label {
+    font-weight: 500;
+    color: var(--label-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.input-group input[type="text"] {
+    width: 100%;
+    padding: 12px 15px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: var(--primary-color);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.input-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* --- File Drop Area --- */
+.file-drop-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    border: 2px dashed var(--glass-border);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-drop-area:hover, .file-drop-area.active {
+    background: var(--glass-hover-bg);
+    border-color: var(--accent-color);
+}
+
+.file-drop-area .icon-upload {
+    font-size: 2rem;
+    color: var(--accent-color);
+}
+
+.file-drop-area input[type="file"] {
+    display: none;
+}
+
+.file-label {
+    color: var(--primary-color);
+    background: var(--accent-color);
+    padding: 8px 16px;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.file-label:hover {
+    background: #275dce;
+}
+
+/* --- Image Preview --- */
+.image-preview {
+    width: 100%;
+    max-height: 250px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-top: 1rem;
+    border: 1px solid var(--glass-border);
+    background-color: rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+/* --- Buttons --- */
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    color: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    margin-top: auto;
+    /* **THIS IS THE FIX** */
+    background: var(--accent-color);
+}
+
+.btn-submit:hover:not(:disabled) {
+    background: #275dce;
+    box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+    background-color: #275dce;
+    opacity: 0.7;
+    cursor: wait;
+}
+
+/* --- Result Area --- */
+.result-area {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--glass-border);
+    animation: fadeIn 0.5s;
+    text-align: center;
+}
+
+.result-area.hidden { display: none; }
+
+.result-area h4 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--success-color);
+}
+
+.result-area.error h4 { color: var(--error-color); }
+
+.result-image-container {
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+}
+
+.result-image {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+/* --- Key Display & Copy Button --- */
+.key-container p { text-align: left; margin-bottom: 0.5rem; }
+.key-display-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: border-color 0.3s ease;
+}
+.key-display-wrapper:hover { border-color: rgba(255, 255, 255, 0.2); }
+.key-display { font-family: 'Courier New', monospace; word-break: break-all; flex-grow: 1; padding: 0.75rem 1rem; }
+.btn-copy-key { flex-shrink: 0; background: var(--glass-hover-bg); border: none; border-left: 1px solid var(--glass-border); color: var(--label-color); cursor: pointer; padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; align-self: stretch; display: flex; align-items: center; gap: 6px; transition: background 0.2s ease, color 0.2s ease; }
+.btn-copy-key:hover { background: var(--accent-color); color: var(--primary-color); }
+.btn-copy-key.copied { background: var(--success-color); color: var(--primary-color); cursor: default; }
+.btn-download { display: inline-flex; width: 100%; padding: 14px; justify-content: center; align-items: center; gap: 10px; border-radius: 8px; background: var(--success-color); color: var(--primary-color); text-decoration: none; font-weight: 500; transition: background 0.2s ease; }
+.btn-download:hover { background: #059669; }
+
+/* --- Button Loading Spinner --- */
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.fa-spin { animation: spin 1s linear infinite; }
+
+/* --- Responsive Stacking --- */
+@media (max-width: 768px) {
+    .nav { flex-direction: column; gap: 0.5rem; }
+}

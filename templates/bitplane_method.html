@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bit-Plane Slicing Encryption</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/bitplane.css"> 
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-links">
+            <a href="/select_method"><i class="fas fa-arrow-left"></i> Back to Methods</a>
+            <a href="/bitplane_history"><i class="fas fa-history"></i> Operation History</a>
+        </div>
+        <a href="/logout" style="margin-left: auto;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </nav>
+
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-layer-group"></i> Bit-Plane Slicing Encryption</h1>
+            <p>Decompose image into bit planes for layered encryption</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-lock"></i> Encrypt Image</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="bpOriginalImage"><i class="fas fa-image"></i> Original Image</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="bpOriginalImage" class="file-input" accept="image/*">
+                        <label for="bpOriginalImage" class="file-input-button">
+                            <i class="fas fa-upload"></i> <span id="bp-original-filename">Choose Image</span>
+                        </label>
+                    </div>
+                    <div class="preview-container" id="bp-original-preview-container"><img id="bpOriginalPreview" class="preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bpAlgorithm"><i class="fas fa-project-diagram"></i> Encryption Algorithm</label>
+                    <select id="bpAlgorithm" class="text-input">
+                        <option value="xor">XOR Encryption</option>
+                        <option value="aes">AES Encryption</option>
+                        <option value="des">DES Encryption</option>
+                    </select>
+
+                    <label style="margin-top: 1.5rem;"><i class="fas fa-layer-group"></i> Bit Planes to Encrypt</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="7" checked> Plane 7 (MSB)</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="6" checked> Plane 6</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="5"> Plane 5</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="4"> Plane 4</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="3"> Plane 3</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="2"> Plane 2</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="1"> Plane 1</label>
+                        <label><input type="checkbox" name="bpPlanesEncrypt" value="0"> Plane 0 (LSB)</label>
+                    </div>
+
+                    <label for="bpKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Encryption Key (optional)</label>
+                    <input type="text" id="bpKey" class="text-input" placeholder="Leave blank for a random key">
+                </div>
+            </div>
+
+            <button id="bpEncryptBtn" class="btn btn-primary btn-block"><i class="fas fa-lock"></i> Encrypt Image</button>
+
+            <div id="bpEncryptedSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Encryption Complete!</h3>
+                <div class="preview-container has-image"><img id="bpEncryptedImage" class="preview"></div>
+                <div class="key-display">
+                    <p><strong>Encryption Key:</strong> <span id="bpKeyDisplay"></span></p>
+                    <div class="key-actions">
+                        <button id="bpCopyKeyBtn" class="btn btn-secondary"><i class="fas fa-copy"></i> Copy</button>
+                        <a id="bpDownloadBtn" class="btn btn-success" download="bitplane_encrypted.png"><i class="fas fa-download"></i> Download</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-unlock"></i> Decrypt Image</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="bpEncryptedImageUpload"><i class="fas fa-file-image"></i> Encrypted Image</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="bpEncryptedImageUpload" class="file-input" accept="image/*">
+                        <label for="bpEncryptedImageUpload" class="file-input-button">
+                            <i class="fas fa-upload"></i> <span id="bp-encrypted-filename">Choose Image</span>
+                        </label>
+                    </div>
+                    <div class="preview-container" id="bp-encrypted-preview-container"><img id="bpEncryptedPreview" class="preview"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bpDecryptAlgorithm"><i class="fas fa-project-diagram"></i> Decryption Algorithm</label>
+                    <select id="bpDecryptAlgorithm" class="text-input">
+                        <option value="xor">XOR Encryption</option>
+                        <option value="aes">AES Encryption</option>
+                        <option value="des">DES Encryption</option>
+                    </select>
+
+                    <label style="margin-top: 1.5rem;"><i class="fas fa-layer-group"></i> Bit Planes to Decrypt</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="7" checked> Plane 7 (MSB)</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="6" checked> Plane 6</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="5"> Plane 5</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="4"> Plane 4</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="3"> Plane 3</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="2"> Plane 2</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="1"> Plane 1</label>
+                        <label><input type="checkbox" name="bpPlanesDecrypt" value="0"> Plane 0 (LSB)</label>
+                    </div>
+
+                    <label for="bpDecryptKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Decryption Key</label>
+                    <input type="text" id="bpDecryptKey" class="text-input" placeholder="Enter your decryption key">
+                </div>
+            </div>
+
+            <button id="bpDecryptBtn" class="btn btn-primary btn-block"><i class="fas fa-unlock"></i> Decrypt Image</button>
+
+            <div id="bpDecryptedSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Decryption Complete!</h3>
+                <div class="preview-container has-image"><img id="bpDecryptedImage" class="preview"></div>
+                <div class="key-actions">
+                    <a id="bpDownloadDecryptedBtn" class="btn btn-success" download="bitplane_decrypted.png"><i class="fas fa-download"></i> Download Decrypted Image</a>
+                </div>
+            </div>
+        </div>
+         <div class="info-card" style="grid-column: 1 / -1;">
+            <h3><i class="fas fa-info-circle"></i> How It Works</h3>
+            <p>This technique operates on the binary representation of the image's pixels. An 8-bit grayscale image is decomposed into 8 individual <strong>bit-planes</strong>. Each plane represents one bit of the pixel's color depth, from the most significant bit (MSB) to the least significant bit (LSB). You can choose which of these planes to encrypt. By encrypting the higher, more significant bit-planes (like 7 and 6), the visual structure of the image is destroyed. The selected planes are then encrypted using a standard algorithm (like AES, DES, or XOR) and a secret key. To decrypt, the same planes must be decrypted with the same key and then recombined to reconstruct the original image.</p>
+        </div>
+    </div>
+
+    <script src="/static/bitplane.js"></script>
+</body>
+</html>

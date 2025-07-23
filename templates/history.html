@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operation History - Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='steganography_history_style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/standard">
+            <i class="fas fa-arrow-left"></i>
+            Back to Steganography
+        </a>
+        <a href="/logout">
+            <i class="fas fa-sign-out-alt"></i>
+            Logout
+        </a>
+    </nav>
+
+    <header class="header">
+        <h1><i class="fas fa-history"></i> Operation History</h1>
+        <p>A log of all your past steganography operations</p>
+    </header>
+
+    <div class="container">
+        {% if records %}
+            <div class="history-grid">
+                {% for record in records %}
+                <div class="history-card" id="record-{{ record.id }}">
+                    <button class="delete-btn" onclick="deleteRecord({{ record.id }})" title="Delete Record">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    
+                    <h3><i class="fas fa-clock"></i> {{ record.created_at.split('.')[0] if '.' in record.created_at else record.created_at }}</h3>
+                    
+                    <div class="image-gallery">
+                        <div class="image-item">
+                            <img src="{{ record.cover_path }}" alt="Cover Image" onclick="openModal('{{ record.cover_path }}')">
+                            <p>Cover</p>
+                        </div>
+                        <div class="image-item">
+                            <img src="{{ record.secret_path }}" alt="Secret Image" onclick="openModal('{{ record.secret_path }}')">
+                            <p>Secret</p>
+                        </div>
+                        <div class="image-item">
+                            <img src="{{ record.hidden_path }}" alt="Hidden Image" onclick="openModal('{{ record.hidden_path }}')">
+                            <p>Hidden</p>
+                            <button class="download-btn" 
+                                    onclick="downloadImage('{{ record.hidden_path }}', 'hidden_{{ record.id }}.png')" 
+                                    title="Download Hidden Image">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="key-info">
+                        <button class="copy-key-btn" data-key="{{ record.key }}" title="Copy Key">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <strong><i class="fas fa-key"></i> Decryption Key:</strong>
+                        <span>{{ record.key }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-records">
+                <h2><i class="fas fa-inbox"></i> No History Found</h2>
+                <p>Perform an operation on the main page to see its history here.</p>
+                <a href="/standard" class="action-btn">
+                    <i class="fas fa-plus"></i> Start New Operation
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close" onclick="closeModal()" title="Close">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="Full Size Image">
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="{{ url_for('static', filename='steganography_history.js') }}"></script>
+</body>
+</html>

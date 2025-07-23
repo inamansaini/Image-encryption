@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Steganography Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/steganography_style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-links">
+            <a href="/select_method">
+                <i class="fas fa-arrow-left"></i>
+                Back to Methods
+            </a>
+            <a href="/history">
+                <i class="fas fa-history"></i>
+                Operation History
+            </a>
+        </div>
+        <a href="/logout">
+            <i class="fas fa-sign-out-alt"></i>
+            Logout
+        </a>
+    </nav>
+
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-shield-alt"></i> Standard Steganography</h1>
+            <p>Hide and reveal secret images using LSB encryption</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-eye-slash"></i> Hide Secret Image</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="coverImage">
+                        <i class="fas fa-image"></i>
+                        Cover Image
+                    </label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="coverImage" class="file-input" accept="image/*">
+                        <div class="file-input-button">
+                            <i class="fas fa-upload"></i>
+                            Choose Cover Image
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        <img id="coverPreview" class="preview">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="secretImage">
+                        <i class="fas fa-user-secret"></i>
+                        Secret Image
+                    </label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="secretImage" class="file-input" accept="image/*">
+                        <div class="file-input-button">
+                            <i class="fas fa-upload"></i>
+                            Choose Secret Image
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        <img id="secretPreview" class="preview">
+                    </div>
+                </div>
+            </div>
+
+            <button id="hideBtn" class="btn btn-primary btn-block">
+                <i class="fas fa-magic"></i>
+                Hide Image
+            </button>
+
+            <div id="resultSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Steganography Complete!</h3>
+                <div class="preview-container has-image">
+                    <img id="hiddenImage" class="preview">
+                </div>
+                <div class="key-display">
+                    <p><strong>Decryption Key:</strong> <span id="keyDisplay"></span></p>
+                    <div class="key-actions">
+                        <button id="copyKeyBtn" class="btn btn-secondary">
+                            <i class="fas fa-copy"></i>
+                            Copy Key
+                        </button>
+                        <a id="downloadBtn" class="btn btn-success" download="hidden_image.png">
+                            <i class="fas fa-download"></i>
+                            Download Image
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-eye"></i> Reveal Hidden Image</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="hiddenImageUpload">
+                        <i class="fas fa-file-image"></i>
+                        Hidden Image
+                    </label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="hiddenImageUpload" class="file-input" accept="image/*">
+                        <div class="file-input-button">
+                            <i class="fas fa-upload"></i>
+                            Choose Hidden Image
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        <img id="hiddenPreview" class="preview">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="keyInput">
+                        <i class="fas fa-key"></i>
+                        Decryption Key
+                    </label>
+                    <input type="text" id="keyInput" class="text-input" placeholder="Enter your decryption key here...">
+                </div>
+            </div>
+
+            <button id="decryptBtn" class="btn btn-primary btn-block">
+                <i class="fas fa-unlock"></i>
+                Reveal Image
+            </button>
+
+            <div id="decryptedSection" class="result-section hidden">
+                <h3><i class="fas fa-check-circle"></i> Decryption Complete!</h3>
+                <div class="preview-container has-image">
+                    <img id="decryptedImage" class="preview">
+                </div>
+                <div class="key-actions">
+                    <a id="downloadDecryptedBtn" class="btn btn-success" download="decrypted_image.png">
+                        <i class="fas fa-download"></i>
+                        Download Revealed Image
+                    </a>
+                </div>
+            </div>
+        </div>
+         <div class="info-card" style="grid-column: 1 / -1;">
+            <h3><i class="fas fa-info-circle"></i> How It Works</h3>
+            <p>This tool uses <strong>Least Significant Bit (LSB) Steganography</strong>. Each pixel in an image has color values (Red, Green, Blue). This method subtly alters the last bit of these values in the 'cover' image to embed the pixels of the 'secret' image. Because it only changes the least important bit, the modification is virtually invisible to the human eye. A decryption key is used to ensure that only someone with the correct key can extract the hidden image from the steganographic one.</p>
+        </div>
+    </div>
+
+    <script src="/static/steganography.js"></script>
+</body>
+</html>
