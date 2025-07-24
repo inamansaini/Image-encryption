@@ -11,17 +11,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from Crypto.Cipher import AES, DES
-from Crypto.Random import get_random_bytes
 from cryptography.fernet import Fernet
 from flask import (Flask, flash, jsonify, redirect, render_template,
-                   request, session, url_for)
+                   request, session, url_for, Response)
 from werkzeug.security import check_password_hash, generate_password_hash
+import base64
 
-# --- Cloud Services & Environment Loading ---
+# --- Environment Loading ---
 from dotenv import load_dotenv
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
 import libsql_client
 
 # Load environment variables from .env file
@@ -31,14 +28,6 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a-very-strong-and-random-secret-key')
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
-
-# --- Cloudinary Configuration ---
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
 
 # --- Turso Database Configuration ---
 TURSO_URL = os.getenv("TURSO_DATABASE_URL")
@@ -50,7 +39,7 @@ if not TURSO_URL or not TURSO_TOKEN:
 # Use CUDA if available, otherwise use CPU.
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# --- HELPER FUNCTIONS FOR CLOUD SERVICES ---
+# --- DATABASE HELPER FUNCTIONS ---
 
 def get_db_connection():
     """Establishes a connection to the Turso cloud database."""
@@ -70,50 +59,58 @@ def row_to_dict(result_set):
         return dict(zip(result_set.columns, result_set.rows[0]))
     return None
 
-def upload_image_to_cloudinary(image_data, prefix):
-    """
-    Encodes image data (NumPy array or bytes), uploads it to Cloudinary, and returns the URL.
-    """
+def execute_db_query(query, params=(), fetch="none"):
+    conn = get_db_connection()
+    if not conn: return None
     try:
-        if isinstance(image_data, np.ndarray):
-            _, buffer = cv2.imencode('.png', image_data)
-            image_bytes = io.BytesIO(buffer).read()
-        elif isinstance(image_data, bytes):
-            image_bytes = image_data
-        else:
-            raise TypeError("Unsupported image data type for upload.")
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        public_id = f"steganography/{prefix}_{timestamp}_{secrets.token_hex(4)}"
-
-        upload_result = cloudinary.uploader.upload(
-            image_bytes,
-            public_id=public_id,
-            overwrite=True,
-            resource_type="image"
-        )
-        return upload_result['secure_url']
+        rs = conn.execute(query, params)
+        if fetch == "all": return rows_to_dict_list(rs)
+        if fetch == "one": return row_to_dict(rs)
+        conn.sync()
+        return rs
     except Exception as e:
-        print(f"Cloudinary upload failed: {e}")
+        print(f"Database query failed: {e}")
         raise
+    finally:
+        if conn: conn.close()
 
-def delete_image_from_cloudinary(image_url):
-    """Extracts the public ID from a Cloudinary URL and deletes the image."""
-    if not image_url or "cloudinary.com" not in image_url:
+# --- DATABASE SETUP ---
+
+def init_db():
+    """Initializes the database with a unified schema."""
+    conn = get_db_connection()
+    if not conn:
+        print("Could not connect to the database to initialize.")
         return
     try:
-        # Extract public ID from URL (e.g., .../upload/v123/steganography/public_id.png)
-        parts = image_url.split('/')
-        # The public ID is the path after the version number, without extension
-        public_id_with_folder = "/".join(parts[parts.index('upload') + 2:])
-        public_id = os.path.splitext(public_id_with_folder)[0]
-        cloudinary.uploader.destroy(public_id)
-        print(f"Deleted {public_id} from Cloudinary.")
-    except Exception as e:
-        print(f"Failed to delete {image_url} from Cloudinary: {e}")
+        conn.batch([
+            '''CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                full_name TEXT,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''',
+            '''CREATE TABLE IF NOT EXISTS records (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                full_name TEXT,
+                method TEXT NOT NULL,
+                algorithm TEXT,
+                input_image BLOB NOT NULL,
+                processed_image BLOB NOT NULL,
+                encryption_key TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )'''
+        ])
+        print("Database initialized successfully.")
+    finally:
+        conn.close()
+
 
 # --- NEURAL NETWORK AND CORE ENCRYPTION LOGIC (Unchanged) ---
-
 class KeyStreamGenerator(nn.Module):
     def __init__(self, input_size=64, output_size=1024):
         super(KeyStreamGenerator, self).__init__()
@@ -156,7 +153,7 @@ def process_nn_image_cipher(image_bytes, key_string, original_shape=None):
     processed_flat_bytes = np.bitwise_xor(image_flat_bytes, key_stream)
     processed_image = processed_flat_bytes.reshape(shape_to_use)
     return processed_image, shape_to_use
-    
+
 def data_to_binary(data):
     if isinstance(data, str): return ''.join([format(ord(i), "08b") for i in data])
     elif isinstance(data, bytes): return ''.join([format(i, "08b") for i in data])
@@ -192,7 +189,6 @@ def reveal_data_lsb(stego_image, key):
     return revealed_img
 
 def apply_chaotic_map(image_np, key, map_type, decrypt=False):
-    """Modified chaotic map function to work directly with NumPy arrays."""
     original_shape = image_np.shape
     flat_pixels = image_np.reshape(-1, original_shape[2])
     num_pixels = len(flat_pixels)
@@ -222,7 +218,6 @@ def apply_chaotic_map(image_np, key, map_type, decrypt=False):
     return processed_pixels.reshape(original_shape)
 
 def apply_arnold_cat_map_np(image_np, iterations=10, decrypt=False):
-    """Modified Arnold Cat Map to work with NumPy arrays."""
     h, w, c = image_np.shape
     n = max(h, w)
     source_canvas = np.zeros((n, n, c), dtype=np.uint8)
@@ -333,57 +328,7 @@ def process_bitplane_image(image_bytes, planes_to_process, key_str, algorithm):
     processed_image = cv2.bitwise_xor(img_color, masked_keystream)
     return processed_image, key_str
 
-# --- DATABASE SETUP & OPERATIONS ---
-
-def init_db():
-    conn = get_db_connection()
-    if not conn: return
-    try:
-        conn.batch([
-            '''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,username TEXT UNIQUE,full_name TEXT,email TEXT,gender TEXT,password TEXT,usage_reasons TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''',
-            '''CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY,user_id INTEGER,cover_path TEXT,secret_path TEXT,hidden_path TEXT,decrypted_path TEXT,key TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))''',
-            '''CREATE TABLE IF NOT EXISTS chaotic_records (id INTEGER PRIMARY KEY,user_id INTEGER,original_path TEXT,encrypted_path TEXT,algorithm TEXT,key TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))''',
-            '''CREATE TABLE IF NOT EXISTS bitplane_records (id INTEGER PRIMARY KEY, user_id INTEGER, original_path TEXT, processed_path TEXT, operation_type TEXT, planes TEXT, algorithm TEXT, key TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))''',
-            '''CREATE TABLE IF NOT EXISTS neural_records (id INTEGER PRIMARY KEY,user_id INTEGER,original_path TEXT,encrypted_path TEXT,original_shape TEXT,key TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))''',
-            '''CREATE TABLE IF NOT EXISTS dna_records (id INTEGER PRIMARY KEY,user_id INTEGER,original_path TEXT,encrypted_path TEXT,original_shape TEXT,key TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))'''
-        ])
-    finally:
-        conn.close()
-
-def execute_db_query(query, params=(), fetch="none"):
-    conn = get_db_connection()
-    if not conn: return None
-    try:
-        rs = conn.execute(query, params)
-        if fetch == "all": return rows_to_dict_list(rs)
-        if fetch == "one": return row_to_dict(rs)
-        conn.sync()
-        return None
-    except Exception as e:
-        print(f"Database query failed: {e}")
-        # This change is CRITICAL. It reports the error back to the caller.
-        raise
-    finally:
-        if conn: conn.close()
-
-def delete_general_record(user_id, record_id, table_name):
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        rs = conn.execute(f"SELECT * FROM {table_name} WHERE id = ? AND user_id = ?", (record_id, user_id))
-        record = row_to_dict(rs)
-        if record:
-            for field in record:
-                if field.endswith('_path') and record[field]:
-                    delete_image_from_cloudinary(record[field])
-            conn.execute(f"DELETE FROM {table_name} WHERE id = ? AND user_id = ?", (record_id, user_id))
-            return True
-        return False
-    finally:
-        conn.close()
-
 # --- AUTHENTICATION ROUTES ---
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -393,6 +338,7 @@ def login():
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['username'] = user['username']
+            session['full_name'] = user['full_name']
             return redirect(url_for('home'))
         else:
             flash('Invalid username or password')
@@ -404,31 +350,112 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        full_name = request.form.get('full_name')
         confirm_password = request.form.get('confirm_password')
+
         if password != confirm_password:
             flash('Passwords do not match')
             return redirect(url_for('register'))
+
         hashed_password = generate_password_hash(password)
         try:
             execute_db_query(
-                "INSERT INTO users (username, full_name, email, gender, password, usage_reasons) VALUES (?, ?, ?, ?, ?, ?)",
-                (username, request.form.get('full_name'), request.form.get('email'), 
-                 request.form.get('gender'), hashed_password, ','.join(request.form.getlist('usage_reasons')))
+                "INSERT INTO users (username, full_name, password) VALUES (?, ?, ?)",
+                (username, full_name, hashed_password)
             )
             flash('Registration successful! Please login.')
             return redirect(url_for('login'))
-        except Exception:
-             flash('Username already exists')
-             return redirect(url_for('register'))
+        except Exception as e:
+            if 'UNIQUE constraint failed' in str(e):
+                flash('Username already exists. Please choose another.')
+            else:
+                flash('An error occurred during registration.')
+                print(f"Registration Error: {e}")
+            return redirect(url_for('register'))
     return render_template('register.html')
 
 @app.route('/logout')
 def logout():
     session.clear()
+    flash('You have been logged out.')
     return redirect(url_for('login'))
 
-# --- STANDARD STEGANOGRAPHY ROUTES ---
+# --- UNIFIED PROCESSING AND HISTORY ROUTES ---
 
+def save_record(method, algorithm, input_image_bytes, processed_image_np, key):
+    """Saves a record to the unified records table."""
+    _, proc_buffer = cv2.imencode('.png', processed_image_np)
+    processed_image_bytes = proc_buffer.tobytes()
+
+    execute_db_query(
+        """INSERT INTO records (user_id, username, full_name, method, algorithm, input_image, processed_image, encryption_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            session['user_id'],
+            session['username'],
+            session.get('full_name'),
+            method,
+            algorithm,
+            input_image_bytes,
+            processed_image_bytes,
+            str(key)
+        )
+    )
+
+def encode_image_for_json(image_np):
+    """Encodes a NumPy image array to a Base64 string for JSON responses."""
+    _, buffer = cv2.imencode('.png', image_np)
+    img_str = base64.b64encode(buffer).decode('utf-8')
+    return f"data:image/png;base64,{img_str}"
+
+@app.route('/history')
+def history():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_records = execute_db_query(
+        "SELECT id, method, algorithm, encryption_key, created_at FROM records WHERE user_id = ? ORDER BY created_at DESC",
+        (session['user_id'],),
+        fetch="all"
+    )
+    return render_template('processing_history.html', records=user_records or [])
+
+@app.route('/image/<int:record_id>/<image_type>')
+def get_image(record_id, image_type):
+    if 'user_id' not in session:
+        return "Unauthorized", 401
+
+    if image_type not in ['input', 'processed']:
+        return "Invalid image type", 404
+
+    column = "input_image" if image_type == 'input' else "processed_image"
+    
+    record = execute_db_query(
+        f"SELECT {column} FROM records WHERE id = ? AND user_id = ?",
+        (record_id, session['user_id']),
+        fetch="one"
+    )
+
+    if record and record[column]:
+        return Response(record[column], mimetype='image/png')
+    return "Image not found", 404
+
+@app.route('/delete_record/<int:record_id>', methods=['POST'])
+def delete_record(record_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    try:
+        execute_db_query(
+            "DELETE FROM records WHERE id = ? AND user_id = ?",
+            (record_id, session['user_id'])
+        )
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error deleting record {record_id}: {e}")
+        return jsonify({'success': False, 'error': 'Failed to delete record'}), 500
+
+# --- LSB STEGANOGRAPHY ROUTES ---
 @app.route('/hide', methods=['POST'])
 def hide():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -443,19 +470,19 @@ def hide():
         is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
         if not is_success: return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
         
-        encryption_key = Fernet.generate_key()
-        cipher_suite = Fernet(encryption_key)
+        key = Fernet.generate_key()
+        cipher_suite = Fernet(key)
         encrypted_secret_data = cipher_suite.encrypt(secret_data_encoded.tobytes())
         data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
         
         payload_bits = len(data_to_hide) * 8
-        num_pixels_needed = math.ceil(payload_bits / 3)
-        side_length = math.ceil(math.sqrt(num_pixels_needed))
-        new_cover_image = cv2.resize(cover_image, (side_length, side_length), interpolation=cv2.INTER_LINEAR)
-        
+        cover_capacity = cover_image.shape[0] * cover_image.shape[1] * 3
+        if payload_bits > cover_capacity:
+            return jsonify({'success': False, 'error': 'Cover image is not large enough to hold the secret image.'})
+
         binary_secret_data = data_to_binary(data_to_hide)
         data_index = 0
-        stego_image = new_cover_image.copy()
+        stego_image = cover_image.copy()
         for i in range(stego_image.shape[0]):
             for j in range(stego_image.shape[1]):
                 pixel = stego_image[i, j]
@@ -467,19 +494,13 @@ def hide():
                 if data_index >= len(binary_secret_data): break
             if data_index >= len(binary_secret_data): break
         
-        key = encryption_key.decode('utf-8')
-        cover_url = upload_image_to_cloudinary(cover_image_bytes, "lsb_cover")
-        secret_url = upload_image_to_cloudinary(secret_image_bytes, "lsb_secret")
-        hidden_url = upload_image_to_cloudinary(stego_image, "lsb_hidden")
-
-        execute_db_query(
-            "INSERT INTO records (user_id, cover_path, secret_path, hidden_path, key) VALUES (?, ?, ?, ?, ?)",
-            (session['user_id'], cover_url, secret_url, hidden_url, key)
-        )
-        return jsonify({'success': True, 'hidden_image': hidden_url, 'key': key})
+        final_key = key.decode('utf-8')
+        save_record("LSB Steganography", None, cover_image_bytes, stego_image, final_key)
+        
+        return jsonify({'success': True, 'key': final_key, 'processed_image': encode_image_for_json(stego_image)})
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'An unexpected error occurred: ' + str(e)})
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
@@ -487,17 +508,18 @@ def decrypt():
     if 'hidden' not in request.files or 'key' not in request.form:
         return jsonify({'success': False, 'error': 'Hidden image and key are required.'})
     try:
-        stego_image = cv2.imdecode(np.frombuffer(request.files['hidden'].read(), np.uint8), cv2.IMREAD_COLOR)
+        stego_image_bytes = request.files['hidden'].read()
+        stego_image = cv2.imdecode(np.frombuffer(stego_image_bytes, np.uint8), cv2.IMREAD_COLOR)
         key = request.form['key'].strip()
+        
         revealed_image = reveal_data_lsb(stego_image, key)
-        decrypted_url = upload_image_to_cloudinary(revealed_image, "lsb_decrypted")
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+        
+        return jsonify({'success': True, 'decrypted_image': encode_image_for_json(revealed_image)})
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'success': False, 'error': "Decryption failed. The key may be incorrect or the image is not a valid stego-image."})
+        return jsonify({'success': False, 'error': str(e)})
 
 # --- CHAOTIC ENCRYPTION ROUTES ---
-
 @app.route('/chaotic_encrypt', methods=['POST'])
 def chaotic_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -515,60 +537,20 @@ def chaotic_encrypt():
             encrypted_image_np = apply_arnold_cat_map_np(original_image_np, iterations, decrypt=False)
         elif algorithm in ['logistic', 'henon']:
             if not user_key:
-                if algorithm == 'logistic':
-                    x0, r = random.uniform(0.01, 0.99), random.uniform(3.9, 3.999)
-                    final_key = f"{x0:.4f},{r:.4f}"
-                else:
-                    x0, y0 = random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)
-                    final_key = f"{x0:.4f},{y0:.4f}"
-            else:
-                final_key = user_key
+                if algorithm == 'logistic': final_key = f"{random.uniform(0.01, 0.99):.4f},{random.uniform(3.9, 3.999):.4f}"
+                else: final_key = f"{random.uniform(-0.5, 0.5):.4f},{random.uniform(-0.5, 0.5):.4f}"
+            else: final_key = user_key
             encrypted_image_np = apply_chaotic_map(original_image_np, final_key, algorithm, decrypt=False)
         else:
             return jsonify({'success': False, 'error': 'Invalid algorithm selected.'})
 
-        original_url = upload_image_to_cloudinary(image_bytes, f"chaotic_original_{algorithm}")
-        encrypted_url = upload_image_to_cloudinary(encrypted_image_np, f"chaotic_encrypted_{algorithm}")
-        
-        execute_db_query(
-            "INSERT INTO chaotic_records (user_id, original_path, encrypted_path, algorithm, key) VALUES (?, ?, ?, ?, ?)",
-            (session['user_id'], original_url, encrypted_url, algorithm, final_key)
-        )
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': final_key})
+        save_record("Chaotic Map", algorithm, image_bytes, encrypted_image_np, final_key)
+        return jsonify({'success': True, 'key': final_key, 'processed_image': encode_image_for_json(encrypted_image_np)})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/chaotic_decrypt', methods=['POST'])
-def chaotic_decrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if 'image' not in request.files or 'key' not in request.form:
-        return jsonify({'success': False, 'error': 'Image and key are required.'})
-    try:
-        key = request.form.get('key').strip()
-        record = execute_db_query("SELECT algorithm FROM chaotic_records WHERE key = ? AND user_id = ?", (key, session['user_id']), fetch="one")
-        if not record: return jsonify({'success': False, 'error': 'Decryption failed. The provided key is incorrect.'})
-        
-        correct_algorithm = record['algorithm']
-        user_algorithm = request.form.get('algorithm')
-        if user_algorithm != correct_algorithm:
-            return jsonify({'success': False, 'error': f'Algorithm mismatch. This key is for the "{correct_algorithm.title()}" map.'})
-
-        encrypted_image_np = cv2.imdecode(np.frombuffer(request.files['image'].read(), np.uint8), cv2.IMREAD_COLOR)
-        decrypted_image_np = None
-        if correct_algorithm == 'arnold':
-            decrypted_image_np = apply_arnold_cat_map_np(encrypted_image_np, int(key), decrypt=True)
-        elif correct_algorithm in ['logistic', 'henon']:
-            decrypted_image_np = apply_chaotic_map(encrypted_image_np, key, correct_algorithm, decrypt=True)
-        
-        decrypted_url = upload_image_to_cloudinary(decrypted_image_np, f"chaotic_decrypted_{correct_algorithm}")
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': 'An unexpected error occurred during decryption.'})
-
 # --- BIT-PLANE ENCRYPTION ROUTES ---
-
 @app.route('/bitplane_encrypt', methods=['POST'])
 def bitplane_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -576,57 +558,24 @@ def bitplane_encrypt():
         return jsonify({'success': False, 'error': 'Image, plane selection, and algorithm are required.'})
     try:
         image_bytes = request.files['image'].read()
-        planes_str = request.form.get('planes')
+        # planes_str = request.form.get('planes')
         algorithm = request.form.get('algorithm')
         key = request.form.get('key', '').strip()
         if not key:
             if algorithm == 'xor': key = str(random.randint(1, 255))
             else: key = secrets.token_hex(16)
         
-        planes_to_encrypt = [int(p) for p in planes_str.split(',')]
+        # For simplicity, we process all planes. The UI can be updated to select them.
+        planes_to_encrypt = list(range(8))
         encrypted_image, final_key = process_bitplane_image(image_bytes, planes_to_encrypt, key, algorithm)
         
-        original_url = upload_image_to_cloudinary(image_bytes, f"bitplane_original_{algorithm}")
-        encrypted_url = upload_image_to_cloudinary(encrypted_image, f"bitplane_encrypted_{algorithm}")
-        
-        execute_db_query(
-            "INSERT INTO bitplane_records (user_id, original_path, processed_path, operation_type, planes, algorithm, key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session['user_id'], original_url, encrypted_url, 'encrypt', planes_str, algorithm, final_key)
-        )
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': final_key})
+        save_record("Bit-plane", algorithm, image_bytes, encrypted_image, final_key)
+        return jsonify({'success': True, 'key': final_key, 'processed_image': encode_image_for_json(encrypted_image)})
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'success': False, 'error': "An unexpected error occurred during encryption."})
-
-@app.route('/bitplane_decrypt', methods=['POST'])
-def bitplane_decrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if 'image' not in request.files or 'key' not in request.form or 'planes' not in request.form or 'algorithm' not in request.form:
-        return jsonify({'success': False, 'error': 'Image, key, plane selection, and algorithm are required.'})
-    try:
-        user_key = request.form.get('key').strip()
-        record = execute_db_query("SELECT planes, algorithm FROM bitplane_records WHERE key = ? AND user_id = ?", (user_key, session['user_id']), fetch="one")
-        if not record: return jsonify({'success': False, 'error': 'Decryption failed: The provided key is incorrect.'})
-
-        user_algorithm = request.form.get('algorithm')
-        if user_algorithm != record['algorithm']: return jsonify({'success': False, 'error': f'Algorithm mismatch. This key is for "{record["algorithm"].upper()}".'})
-        
-        user_planes_str = request.form.get('planes')
-        if set(user_planes_str.split(',')) != set(record['planes'].split(',')):
-            return jsonify({'success': False, 'error': f'Bit-plane mismatch. Correct planes are: {record["planes"]}.'})
-
-        image_bytes = request.files['image'].read()
-        planes_to_decrypt = [int(p) for p in user_planes_str.split(',')]
-        decrypted_image, _ = process_bitplane_image(image_bytes, planes_to_decrypt, user_key, user_algorithm)
-        
-        decrypted_url = upload_image_to_cloudinary(decrypted_image, f"bitplane_decrypted_{user_algorithm}")
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': 'An unexpected error occurred during decryption.'})
+        return jsonify({'success': False, 'error': str(e)})
 
 # --- NEURAL NETWORK ENCRYPTION ROUTES ---
-
 @app.route('/neural_network_encrypt', methods=['POST'])
 def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -635,42 +584,15 @@ def neural_network_encrypt():
         image_bytes = request.files['image'].read()
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
         
-        encrypted_image, original_shape = process_nn_image_cipher(image_bytes, key)
+        encrypted_image, _ = process_nn_image_cipher(image_bytes, key)
         
-        original_url = upload_image_to_cloudinary(image_bytes, "nn_original")
-        encrypted_url = upload_image_to_cloudinary(encrypted_image, "nn_encrypted")
-        
-        execute_db_query(
-            "INSERT INTO neural_records (user_id, original_path, encrypted_path, original_shape, key) VALUES (?, ?, ?, ?, ?)",
-            (session['user_id'], original_url, encrypted_url, str(original_shape), key)
-        )
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+        save_record("Neural Network Cipher", None, image_bytes, encrypted_image, key)
+        return jsonify({'success': True, 'key': key, 'processed_image': encode_image_for_json(encrypted_image)})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/neural_network_decrypt', methods=['POST'])
-def neural_network_decrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if 'image' not in request.files or 'key' not in request.form:
-        return jsonify({'success': False, 'error': 'Encrypted image and key are required.'})
-    try:
-        key = request.form.get('key').strip()
-        record = execute_db_query("SELECT original_shape FROM neural_records WHERE key = ? AND user_id = ?", (key, session['user_id']), fetch="one")
-        if not record: return jsonify({'success': False, 'error': 'Decryption failed. The provided key is incorrect.'})
-        
-        original_shape = eval(record['original_shape'])
-        image_bytes = request.files['image'].read()
-        decrypted_image, _ = process_nn_image_cipher(image_bytes, key, original_shape=original_shape)
-        
-        decrypted_url = upload_image_to_cloudinary(decrypted_image, "nn_decrypted")
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Decryption failed. Ensure the key and encrypted file are correct.'})
-
 # --- DNA ENCRYPTION ROUTES ---
-
 @app.route('/dna_encrypt', methods=['POST'])
 def dna_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -680,112 +602,80 @@ def dna_encrypt():
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
         
         original_img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-        original_shape = original_img.shape
-        pixel_bytes = original_img.tobytes()
-        encrypted_img_array = process_dna_image(pixel_bytes, original_shape, key, decrypt=False)
+        encrypted_img_array = process_dna_image(original_img.tobytes(), original_img.shape, key, decrypt=False)
         
-        original_url = upload_image_to_cloudinary(image_bytes, "dna_original")
-        encrypted_url = upload_image_to_cloudinary(encrypted_img_array, "dna_encrypted")
-        
-        execute_db_query(
-            "INSERT INTO dna_records (user_id, original_path, encrypted_path, original_shape, key) VALUES (?, ?, ?, ?, ?)",
-            (session['user_id'], original_url, encrypted_url, str(original_shape), key)
-        )
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+        save_record("DNA Cipher", None, image_bytes, encrypted_img_array, key)
+        return jsonify({'success': True, 'key': key, 'processed_image': encode_image_for_json(encrypted_img_array)})
     except Exception as e:
         traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+# --- DECRYPTION ROUTES (FOR TRYING OUT, NOT HISTORY) ---
+@app.route('/chaotic_decrypt', methods=['POST'])
+def chaotic_decrypt():
+    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        key = request.form.get('key').strip()
+        algorithm = request.form.get('algorithm')
+        image_bytes = request.files['image'].read()
+        encrypted_image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        
+        if algorithm == 'arnold':
+            decrypted_image_np = apply_arnold_cat_map_np(encrypted_image_np, int(key), decrypt=True)
+        elif algorithm in ['logistic', 'henon']:
+            decrypted_image_np = apply_chaotic_map(encrypted_image_np, key, algorithm, decrypt=True)
+        else:
+            return jsonify({'success': False, 'error': 'Invalid algorithm.'})
+            
+        return jsonify({'success': True, 'decrypted_image': encode_image_for_json(decrypted_image_np)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/bitplane_decrypt', methods=['POST'])
+def bitplane_decrypt():
+    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        user_key = request.form.get('key').strip()
+        user_algorithm = request.form.get('algorithm')
+        image_bytes = request.files['image'].read()
+        
+        planes_to_decrypt = list(range(8))
+        decrypted_image, _ = process_bitplane_image(image_bytes, planes_to_decrypt, user_key, user_algorithm)
+        
+        return jsonify({'success': True, 'decrypted_image': encode_image_for_json(decrypted_image)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/neural_network_decrypt', methods=['POST'])
+def neural_network_decrypt():
+    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        key = request.form.get('key').strip()
+        image_bytes = request.files['image'].read()
+        original_img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_UNCHANGED)
+        
+        decrypted_image, _ = process_nn_image_cipher(image_bytes, key, original_shape=original_img.shape)
+        
+        return jsonify({'success': True, 'decrypted_image': encode_image_for_json(decrypted_image)})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/dna_decrypt', methods=['POST'])
 def dna_decrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if 'image' not in request.files or 'key' not in request.form:
-        return jsonify({'success': False, 'error': 'Encrypted image and key are required.'})
     try:
         key = request.form.get('key').strip()
-        record = execute_db_query("SELECT original_shape FROM dna_records WHERE key = ? AND user_id = ?", (key, session['user_id']), fetch="one")
-        if not record: return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect.'})
+        image_bytes = request.files['image'].read()
+        encrypted_img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+
+        decrypted_img_array = process_dna_image(encrypted_img.tobytes(), encrypted_img.shape, key, decrypt=True)
         
-        original_shape = eval(record['original_shape'])
-        encrypted_img = cv2.imdecode(np.frombuffer(request.files['image'].read(), np.uint8), cv2.IMREAD_COLOR)
-        pixel_bytes = encrypted_img.tobytes()
-        decrypted_img_array = process_dna_image(pixel_bytes, original_shape, key, decrypt=True)
-        
-        decrypted_url = upload_image_to_cloudinary(decrypted_img_array, "dna_decrypted")
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+        return jsonify({'success': True, 'decrypted_image': encode_image_for_json(decrypted_img_array)})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Decryption failed. Ensure the key and encrypted file are correct.'})
+        return jsonify({'success': False, 'error': str(e)})
 
-# --- HISTORY AND DELETION ROUTES (GENERALIZED) ---
-
-@app.route('/history')
-def history():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    records = execute_db_query("SELECT * FROM records WHERE user_id = ? ORDER BY created_at DESC", (session['user_id'],), fetch="all")
-    return render_template('history.html', records=records or [])
-
-@app.route('/delete_record/<int:record_id>', methods=['POST'])
-def delete_record_route(record_id):
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if delete_general_record(session['user_id'], record_id, 'records'):
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Record not found'}), 404
-
-@app.route('/chaotic_history')
-def chaotic_history():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    records = execute_db_query("SELECT * FROM chaotic_records WHERE user_id = ? ORDER BY created_at DESC", (session['user_id'],), fetch="all")
-    return render_template('chaotic_history.html', records=records or [])
-
-@app.route('/delete_chaotic_record/<int:record_id>', methods=['POST'])
-def delete_chaotic_record_route(record_id):
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if delete_general_record(session['user_id'], record_id, 'chaotic_records'):
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Record not found'}), 404
-
-@app.route('/bitplane_history')
-def bitplane_history():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    records = execute_db_query("SELECT * FROM bitplane_records WHERE user_id = ? AND operation_type = 'encrypt' ORDER BY created_at DESC", (session['user_id'],), fetch="all")
-    return render_template('bitplane_history.html', records=records or [])
-
-@app.route('/delete_bitplane_record/<int:record_id>', methods=['POST'])
-def delete_bitplane_record_route(record_id):
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if delete_general_record(session['user_id'], record_id, 'bitplane_records'):
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Record not found'}), 404
-
-@app.route('/dna_history')
-def dna_history():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    records = execute_db_query("SELECT * FROM dna_records WHERE user_id = ? ORDER BY created_at DESC", (session['user_id'],), fetch="all")
-    return render_template('dna_history.html', records=records or [])
-
-@app.route('/delete_dna_record/<int:record_id>', methods=['POST'])
-def delete_dna_record_route(record_id):
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if delete_general_record(session['user_id'], record_id, 'dna_records'):
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Record not found'}), 404
-
-@app.route('/neural_network_history')
-def neural_network_history():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    records = execute_db_query("SELECT * FROM neural_records WHERE user_id = ? ORDER BY created_at DESC", (session['user_id'],), fetch="all")
-    return render_template('neural_network_history.html', records=records or [])
-
-@app.route('/delete_neural_record/<int:record_id>', methods=['POST'])
-def delete_neural_record_route(record_id):
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    if delete_general_record(session['user_id'], record_id, 'neural_records'):
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Record not found'}), 404
 
 # --- PAGE RENDERING AND MAIN ROUTES ---
-
 @app.route('/select_method')
 def select_method():
     if 'user_id' not in session: return redirect(url_for('login'))
@@ -823,5 +713,6 @@ def home():
     return redirect(url_for('select_method'))
 
 if __name__ == '__main__':
-    init_db()
+    with app.app_context():
+        init_db()
     app.run(debug=True)
