@@ -357,13 +357,12 @@ def execute_db_query(query, params=(), fetch="none"):
         rs = conn.execute(query, params)
         if fetch == "all": return rows_to_dict_list(rs)
         if fetch == "one": return row_to_dict(rs)
-        # For write operations (INSERT, DELETE), wait for the change to be 
-        # confirmed by the server before closing the connection.
         conn.sync()
-        return None 
+        return None
     except Exception as e:
         print(f"Database query failed: {e}")
-        return None
+        # This change is CRITICAL. It reports the error back to the caller.
+        raise
     finally:
         if conn: conn.close()
 
