@@ -6,7 +6,6 @@ import math
 import random
 import hashlib
 from datetime import datetime
-
 import cv2
 import numpy as np
 import torch
@@ -358,6 +357,9 @@ def execute_db_query(query, params=(), fetch="none"):
         rs = conn.execute(query, params)
         if fetch == "all": return rows_to_dict_list(rs)
         if fetch == "one": return row_to_dict(rs)
+        # For write operations (INSERT, DELETE), wait for the change to be 
+        # confirmed by the server before closing the connection.
+        conn.sync()
         return None 
     except Exception as e:
         print(f"Database query failed: {e}")
