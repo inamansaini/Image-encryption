@@ -1,15 +1,13 @@
-﻿# PyTorch - CPU Version (for deployment)
+﻿# PyTorch (CPU-only build for server compatibility)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
-torchaudio
 
-# Web Framework and Server
+# Web Application & Production Server
 Flask
 gunicorn
-werkzeug
 
-# Image, Scientific Computing, and Crypto
+# Core Libraries for Image, Data & Crypto
 numpy
 opencv-python
 Pillow
