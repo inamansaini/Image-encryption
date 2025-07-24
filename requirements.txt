@@ -1,18 +1,17 @@
-﻿
-﻿--extra-index-url https://download.pytorch.org/whl/cpu
+﻿# PyTorch - CPU Version (for deployment)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
 
 # Web Framework and Server
 Flask
 gunicorn
+werkzeug
 
-# Image Processing and Scientific Computing
-opencv-python
+# Image, Scientific Computing, and Crypto
 numpy
-
-# Machine Learning
-torch
-torchvision
-
-# Cryptography
-cryptography==35.0.0
+opencv-python
+Pillow
+cryptography
 pycryptodome
