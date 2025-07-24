@@ -96,16 +96,38 @@ function deleteRecord(recordId) {
 }
 
 /**
- * Triggers the download of an image from a URL.
- * @param {string} imageUrl The direct URL to the image.
+ * Triggers the download of an image.
+ * @param {string} imagePath The path to the image.
  * @param {string} filename The desired filename for the download.
  */
-function downloadImage(imageUrl, filename) {
-    // This is the corrected, simpler method that avoids CORS errors.
-    const a = document.createElement('a');
-    a.href = imageUrl;
-    a.download = filename; // The 'download' attribute tells the browser to download the file
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+function downloadImage(imagePath, filename) {
+    const downloadUrl = `/${imagePath}`;
+    console.log('Attempting to download from URL:', downloadUrl);
+
+    fetch(downloadUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            
+            document.body.appendChild(a);
+            a.click();
+            
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showToast('Image downloaded successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Download error:', error);
+            showToast(`Download failed: ${error.message}`, 'error');
+        });
 }

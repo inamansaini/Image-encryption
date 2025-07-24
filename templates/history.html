@@ -37,19 +37,19 @@
                         <i class="fas fa-trash"></i>
                     </button>
                     
-                    <h3><i class="fas fa-clock"></i> {{ record.created_at.split('.')[0] if '.' in record.created_at else record.created_at }}</h3>
+                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</h3>
                     
                     <div class="image-gallery">
                         <div class="image-item">
-                            <img src="{{ record.cover_path }}" alt="Cover Image" onclick="openModal('{{ record.cover_path }}')">
+                            <img src="/{{ record.cover_path }}" alt="Cover Image" onclick="openModal('/{{ record.cover_path }}')">
                             <p>Cover</p>
                         </div>
                         <div class="image-item">
-                            <img src="{{ record.secret_path }}" alt="Secret Image" onclick="openModal('{{ record.secret_path }}')">
+                            <img src="/{{ record.secret_path }}" alt="Secret Image" onclick="openModal('/{{ record.secret_path }}')">
                             <p>Secret</p>
                         </div>
                         <div class="image-item">
-                            <img src="{{ record.hidden_path }}" alt="Hidden Image" onclick="openModal('{{ record.hidden_path }}')">
+                            <img src="/{{ record.hidden_path }}" alt="Hidden Image" onclick="openModal('/{{ record.hidden_path }}')">
                             <p>Hidden</p>
                             <button class="download-btn" 
                                     onclick="downloadImage('{{ record.hidden_path }}', 'hidden_{{ record.id }}.png')" 
