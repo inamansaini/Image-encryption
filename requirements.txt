@@ -14,3 +14,4 @@ Pillow
 cryptography
 pycryptodome
 python-dotenv
+pymongo
