@@ -483,7 +483,7 @@ def serve_temp_file(filename):
 def history():
     if 'user_id' not in session: return redirect(url_for('login'))
     all_records = get_all_records(session['user_id'])
-    return render_template('history.html', records=all_records)
+    return render_template('steganography_history.html', records=all_records)
 
 @app.route('/delete_record/<int:record_id>', methods=['POST'])
 def delete_record_route(record_id):
@@ -586,7 +586,7 @@ def select_method():
 @app.route('/standard')
 def standard():
     if 'user_id' not in session: return redirect(url_for('login'))
-    return render_template('index.html')
+    return render_template('steganography.html')
 
 @app.route('/chaotic')
 def chaotic():
