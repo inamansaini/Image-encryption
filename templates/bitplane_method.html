@@ -14,7 +14,7 @@
     <nav class="nav">
         <div class="nav-links">
             <a href="/select_method"><i class="fas fa-arrow-left"></i> Back to Methods</a>
-            <a href="/bitplane_history"><i class="fas fa-history"></i> Operation History</a>
+            <a href="{{ url_for('history_by_method', method='bitplane') }}"><i class="fas fa-history"></i> Operation History</a>
         </div>
         <a href="/logout" style="margin-left: auto;">
             <i class="fas fa-sign-out-alt"></i> Logout
