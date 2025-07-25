@@ -15,3 +15,5 @@ cryptography
 pycryptodome
 python-dotenv
 pymongo
+cloudinary
+requests
