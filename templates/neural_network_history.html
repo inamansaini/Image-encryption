@@ -6,9 +6,6 @@
     <title>Neural Network History</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='neural_network_history.css') }}">
-    <style>
-        
-    </style>
 </head>
 <body>
     <nav class="nav">
@@ -25,30 +22,32 @@
         {% if records %}
         <div class="history-grid">
             {% for record in records %}
-            <div class="history-card" data-record-id="{{ record.id }}">
-                <button class="delete-btn" title="Delete Record"><i class="fas fa-trash"></i></button>
+            <div class="history-card" id="record-{{ record.id }}">
+                <button class="delete-btn" onclick="deleteRecord('{{ record.id }}')" title="Delete Record"><i class="fas fa-trash"></i></button>
                 <h3>
                     <i class="fas fa-clock"></i>
-                    {{ record.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    {{ record.created_at.strftime('%B %d, %Y at %I:%M %p') }} UTC
                 </h3>
 
                 <div class="image-gallery">
                     <div class="image-item">
-                        <img src="{{ url_for('serve_temp_file', filename=record.original_path.split('/')[-1]) }}" alt="Original Image" class="history-img">
+                        <img src="{{ record.original_url }}" alt="Original Image" class="history-img" onclick="openModal('{{ record.original_url }}')">
                         <p>Original</p>
                     </div>
                     <div class="image-item">
-                        <img src="{{ url_for('serve_temp_file', filename=record.encrypted_path.split('/')[-1]) }}" alt="Encrypted Image" class="history-img">
+                        <img src="{{ record.encrypted_url }}" alt="Encrypted Image" class="history-img" onclick="openModal('{{ record.encrypted_url }}')">
                         <p>Encrypted</p>
-                        <a href="{{ url_for('serve_temp_file', filename=record.encrypted_path.split('/')[-1]) }}" download="encrypted_{{ record.id }}.png" class="download-btn" title="Download Encrypted Image">
+                        <button class="download-btn" 
+                                onclick="downloadImage('{{ record.encrypted_url }}', 'encrypted_nn_{{ record.id }}.png')" 
+                                title="Download Encrypted Image">
                             <i class="fas fa-download"></i> Download
-                        </a>
-                        </div>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="key-info">
                     <strong><i class="fas fa-key"></i> Key:</strong>
-                    <button class="copy-key-btn" title="Copy Key"><i class="fas fa-copy"></i></button>
+                    <button class="copy-key-btn" onclick="copyKey('{{ record.key }}')" title="Copy Key"><i class="fas fa-copy"></i></button>
                     <span class="key-text">{{ record.key }}</span>
                 </div>
             </div>
@@ -66,7 +65,7 @@
     </div>
 
     <div id="imageModal" class="modal">
-        <span class="close">&times;</span>
+        <span class="close" onclick="closeModal()">&times;</span>
         <div class="modal-content">
             <img id="modalImage">
         </div>
@@ -74,6 +73,6 @@
     
     <div id="toast" class="toast"></div>
 
-    <script src="{{ url_for('static', filename='neural_network_history.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
 </body>
 </html>

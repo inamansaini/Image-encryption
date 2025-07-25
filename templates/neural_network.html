@@ -8,15 +8,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="/static/neural_network.css">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='neural_network.css') }}">
 </head>
 <body>
     <nav class="nav">
         <div class="nav-links">
             <a href="{{ url_for('select_method') }}"><i class="fas fa-arrow-left"></i> Back to Methods</a>
-            <a href="{{ url_for('neural_network_history') }}"><i class="fas fa-history"></i> Operation History</a>
+            <a href="{{ url_for('history_by_method', method='neural_network') }}"><i class="fas fa-history"></i> Operation History</a>
         </div>
         <a href="{{ url_for('logout') }}" style="margin-left: auto;">
             <i class="fas fa-sign-out-alt"></i> Logout
@@ -44,7 +42,6 @@
                     </div>
                     <div class="preview-container" id="nnOriginalImage-preview-container"><img id="nnOriginalImagePreview" class="preview"></div>
                 </div>
-
                 <div class="form-group">
                     <label for="nnKey"><i class="fas fa-key"></i> Encryption Key (Optional)</label>
                     <div class="key-input-group">
@@ -55,47 +52,22 @@
             </div>
             <button id="nnEncryptBtn" class="btn btn-primary"><i class="fas fa-lock"></i> Encrypt Image</button>
             <div id="encryptStatus" class="status-message hidden"></div>
-
             <div id="nnEncryptedSection" class="result-section hidden">
                 <h3><i class="fas fa-check-circle"></i> Encryption Complete!</h3>
                 <div class="preview-container has-image" id="nnEncryptedImage-preview-container">
                     <img id="nnEncryptedImage" class="preview">
                 </div>
                 <div class="key-actions">
-                    <a id="nnDownloadBtn" class="btn btn-success" download="encrypted_image.png"><i class="fas fa-download"></i> Download Encrypted Image (.png)</a>
+                    <a id="nnDownloadBtn" class="btn btn-success" download="encrypted_image.png"><i class="fas fa-download"></i> Download Encrypted Image</a>
                 </div>
             </div>
         </div>
 
         <div class="card">
             <h2><i class="fas fa-unlock"></i> Decrypt Image</h2>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="nnEncryptedImageUpload"><i class="fas fa-file-invoice"></i> Encrypted Image</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="nnEncryptedImageUpload" class="file-input" accept="image/png">
-                        <label for="nnEncryptedImageUpload" class="file-input-button">
-                            <i class="fas fa-upload"></i> <span id="nn-encrypted-filename-display">Choose .png File</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="nnDecryptKey"><i class="fas fa-key"></i> Decryption Key</label>
-                    <input type="text" id="nnDecryptKey" class="text-input" placeholder="Enter the exact key used to encrypt">
-                </div>
-            </div>
-            <button id="nnDecryptBtn" class="btn btn-primary"><i class="fas fa-unlock"></i> Decrypt Image</button>
-            <div id="decryptStatus" class="status-message hidden"></div>
-
-            <div id="nnDecryptedSection" class="result-section hidden">
-                <h3><i class="fas fa-check-circle"></i> Decryption Complete!</h3>
-                <div class="preview-container has-image" id="nnDecryptedImage-preview-container">
-                    <img id="nnDecryptedImage" class="preview">
-                </div>
-                <div class="key-actions">
-                    <a id="nnDownloadDecryptedBtn" class="btn btn-success" download="nn_decrypted.png"><i class="fas fa-download"></i> Download Decrypted Image</a>
-                </div>
+            <div class="info-box" style="padding: 1rem; text-align: center; background-color: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 1rem;">
+                <p><i class="fas fa-info-circle"></i> To decrypt an image, please go to your <a href="{{ url_for('history_by_method', method='neural_network') }}" style="color: var(--accent-color); text-decoration: underline;">Operation History</a> page.</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9em; opacity: 0.8;">This ensures the correct parameters are used for perfect reconstruction.</p>
             </div>
         </div>
 
@@ -106,6 +78,6 @@
         </div>
     </div>
     
-    <script src="/static/neural_network.js"></script>
+    <script src="{{ url_for('static', filename='neural_network.js') }}"></script>
 </body>
 </html>
