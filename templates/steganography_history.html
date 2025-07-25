@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operation History - Image Steganography Pro</title>
+    <title>Steganography History - Image Steganography Pro</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,19 +13,19 @@
 </head>
 <body>
     <nav class="nav">
-        <a href="/standard">
+        <a href="{{ url_for('standard') }}">
             <i class="fas fa-arrow-left"></i>
             Back to Steganography
         </a>
-        <a href="/logout">
+        <a href="{{ url_for('logout') }}">
             <i class="fas fa-sign-out-alt"></i>
             Logout
         </a>
     </nav>
 
     <header class="header">
-        <h1><i class="fas fa-history"></i> Operation History</h1>
-        <p>A log of all your past steganography operations</p>
+        <h1><i class="fas fa-history"></i> Steganography Operation History</h1>
+        <p>A log of all your past LSB steganography operations</p>
     </header>
 
     <div class="container">
@@ -33,26 +33,26 @@
             <div class="history-grid">
                 {% for record in records %}
                 <div class="history-card" id="record-{{ record.id }}">
-                    <button class="delete-btn" onclick="deleteRecord({{ record.id }})" title="Delete Record">
+                    <button class="delete-btn" onclick="deleteRecord('{{ record.id }}')" title="Delete Record">
                         <i class="fas fa-trash"></i>
                     </button>
                     
-                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</h3>
+                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</h3>
                     
                     <div class="image-gallery">
                         <div class="image-item">
-                            <img src="/{{ record.cover_path }}" alt="Cover Image" onclick="openModal('/{{ record.cover_path }}')">
+                            <img src="{{ record.original_url }}" alt="Cover Image" onclick="openModal('{{ record.original_url }}')">
                             <p>Cover</p>
                         </div>
                         <div class="image-item">
-                            <img src="/{{ record.secret_path }}" alt="Secret Image" onclick="openModal('/{{ record.secret_path }}')">
+                            <img src="{{ record.secret_url }}" alt="Secret Image" onclick="openModal('{{ record.secret_url }}')">
                             <p>Secret</p>
                         </div>
                         <div class="image-item">
-                            <img src="/{{ record.hidden_path }}" alt="Hidden Image" onclick="openModal('/{{ record.hidden_path }}')">
+                             <img src="{{ record.encrypted_url }}" alt="Hidden Image" onclick="openModal('{{ record.encrypted_url }}')">
                             <p>Hidden</p>
                             <button class="download-btn" 
-                                    onclick="downloadImage('{{ record.hidden_path }}', 'hidden_{{ record.id }}.png')" 
+                                    onclick="downloadImage('{{ record.encrypted_url }}', 'hidden_{{ record.id }}.png')" 
                                     title="Download Hidden Image">
                                 <i class="fas fa-download"></i>
                             </button>
@@ -73,7 +73,7 @@
             <div class="no-records">
                 <h2><i class="fas fa-inbox"></i> No History Found</h2>
                 <p>Perform an operation on the main page to see its history here.</p>
-                <a href="/standard" class="action-btn">
+                <a href="{{ url_for('standard') }}" class="action-btn">
                     <i class="fas fa-plus"></i> Start New Operation
                 </a>
             </div>

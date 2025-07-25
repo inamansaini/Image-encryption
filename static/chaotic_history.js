@@ -1,92 +1,83 @@
+// This file is now generic and can be used for any history page.
 
-    const modal = document.getElementById('imageModal');
-    const modalImg = document.getElementById('modalImage');
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => {
+        toast.className = toast.className.replace('show', '');
+    }, 3000);
+}
 
-    function showToast(message, isError = false) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = 'toast show ' + (isError ? 'error' : 'success');
-        setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
-    }
+function copyKey(keyText) {
+    if (!keyText) return;
+    navigator.clipboard.writeText(keyText).then(() => {
+        showToast('Key copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy key:', err);
+        showToast('Failed to copy key.', 'error');
+    });
+}
 
-    function copyKey(keyText) {
-        navigator.clipboard.writeText(keyText).then(() => {
-            showToast('Key copied to clipboard!');
-        }).catch(err => {
-            showToast('Failed to copy key.', true);
-        });
-    }
-
-    function deleteRecord(recordId) {
-        if (!confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-            return;
-        }
-        fetch(`/delete_chaotic_record/${recordId}`, {
+/**
+ * **** FIXED to call the correct unified delete route ****
+ * Deletes a record from the history.
+ * @param {string} recordId The ID of the record to delete.
+ */
+function deleteRecord(recordId) {
+    if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+        // Correct endpoint for deleting from the unified history
+        fetch(`/delete_history_record/${recordId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const recordElement = document.getElementById(`record-${recordId}`);
-                if (recordElement) {
-                    recordElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                    recordElement.style.opacity = '0';
-                    recordElement.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        recordElement.remove();
-                        if (document.querySelectorAll('.history-card').length === 0) {
-                            window.location.reload();
-                        }
-                    }, 500);
+                const card = document.getElementById(`record-${recordId}`);
+                if (card) {
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 300);
                 }
-                showToast('Record deleted successfully.');
+                showToast('Record deleted successfully', 'success');
             } else {
-                showToast('Error deleting record: ' + data.error, true);
+                showToast('Failed to delete record: ' + (data.error || 'Unknown error'), 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showToast('An unexpected error occurred.', true);
+            showToast('Failed to delete record', 'error');
         });
     }
+}
 
-    function openModal(imgSrc) {
+function openModal(imgSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    if (modal && modalImg) {
         modal.style.display = 'block';
         modalImg.src = imgSrc;
     }
+}
 
-    function closeModal() {
+function closeModal() {
+    const modal = document.getElementById('imageModal');
+    if (modal) {
         modal.style.display = 'none';
     }
-    
-    // === ADDED DOWNLOAD FUNCTION ===
-    function downloadImage(imagePath, filename) {
-        fetch(`/${imagePath}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server responded with ${response.status}`);
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = filename;
-                
-                document.body.appendChild(a);
-                a.click();
-                
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
+}
 
-                showToast('Image downloaded successfully!');
-            })
-            .catch(error => {
-                console.error('Download error:', error);
-                showToast(`Download failed: ${error.message}`, true);
-            });
-    }
+/**
+ * **** FIXED to use the backend download route ****
+ * Triggers the download of an image from Cloudinary.
+ * @param {string} imageUrl The full Cloudinary URL of the image.
+ * @param {string} filename The desired filename for the download.
+ */
+function downloadImage(imageUrl, filename) {
+    // Construct the URL for our new Flask download route
+    const downloadUrl = `/download_image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
     
+    // Simply navigate to the URL. The browser will handle the download.
+    window.location.href = downloadUrl;
+}

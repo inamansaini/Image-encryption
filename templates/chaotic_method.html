@@ -10,8 +10,8 @@
 <body>
     <nav class="nav">
         <div class="nav-links">
-            <a href="/select_method"><i class="fas fa-arrow-left"></i> Back to Methods</a>
-            <a href="/chaotic_history"><i class="fas fa-history"></i> Operation History</a>
+            <a href="{{ url_for('select_method') }}"><i class="fas fa-arrow-left"></i> Back to Methods</a>
+            <a href="{{ url_for('history_by_method', method='chaotic') }}"><i class="fas fa-history"></i> Operation History</a>
         </div>
         <a href="/logout" style="margin-left: auto;">
             <i class="fas fa-sign-out-alt"></i> Logout
@@ -70,29 +70,29 @@
 
         <div class="card">
             <h2><i class="fas fa-unlock"></i> Decrypt Image</h2>
-                 <div class="form-grid">
-                     <div class="form-group">
-                        <label for="encryptedImageUpload"><i class="fas fa-file-image"></i> Encrypted Image</label>
-                        <div class="file-input-wrapper">
-                            <input type="file" id="encryptedImageUpload" class="file-input" accept="image/*">
-                            <label for="encryptedImageUpload" class="file-input-button">
-                                <i class="fas fa-upload"></i> <span id="encrypted-filename">Choose Image</span>
-                            </label>
-                        </div>
-                        <div class="preview-container" id="encrypted-preview-container"><img id="encryptedPreview" class="preview"></div>
-                    </div>
+                  <div class="form-grid">
+                      <div class="form-group">
+                          <label for="encryptedImageUpload"><i class="fas fa-file-image"></i> Encrypted Image</label>
+                          <div class="file-input-wrapper">
+                              <input type="file" id="encryptedImageUpload" class="file-input" accept="image/*">
+                              <label for="encryptedImageUpload" class="file-input-button">
+                                  <i class="fas fa-upload"></i> <span id="encrypted-filename">Choose Image</span>
+                              </label>
+                          </div>
+                          <div class="preview-container" id="encrypted-preview-container"><img id="encryptedPreview" class="preview"></div>
+                      </div>
 
-                    <div class="form-group">
-                        <label for="decryptChaosType"><i class="fas fa-project-diagram"></i> Chaos Algorithm</label>
-                        <select id="decryptChaosType" class="text-input">
-                            <option value="logistic">Logistic Map</option>
-                            <option value="henon">Henon Map</option>
-                            <option value="arnold">Arnold Cat Map</option>
-                        </select>
-                        <label for="decryptKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Decryption Key</label>
-                        <input type="text" id="decryptKey" class="text-input" placeholder="Enter your decryption key">
-                    </div>
-                 </div>
+                      <div class="form-group">
+                          <label for="decryptChaosType"><i class="fas fa-project-diagram"></i> Chaos Algorithm</label>
+                          <select id="decryptChaosType" class="text-input">
+                              <option value="logistic">Logistic Map</option>
+                              <option value="henon">Henon Map</option>
+                              <option value="arnold">Arnold Cat Map</option>
+                          </select>
+                          <label for="decryptKey" style="margin-top: 1.5rem;"><i class="fas fa-key"></i> Decryption Key</label>
+                          <input type="text" id="decryptKey" class="text-input" placeholder="Enter your decryption key">
+                      </div>
+                  </div>
 
             <button id="decryptBtn" class="btn btn-primary btn-block"><i class="fas fa-unlock"></i> Decrypt Image</button>
 

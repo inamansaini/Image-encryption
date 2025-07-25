@@ -1,24 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Select all the copy buttons on the page
     const copyButtons = document.querySelectorAll('.copy-key-btn');
 
-    // Add a click event listener to each button
     copyButtons.forEach(button => {
         button.addEventListener('click', () => {
-            // Retrieve the key from the button's 'data-key' attribute
             const keyToCopy = button.dataset.key;
-            
-            // Call the copyKey function with the retrieved key
             copyKey(keyToCopy); 
         });
     });
 });
 
-/**
- * Displays a toast notification message.
- * @param {string} message The message to display.
- * @param {string} type The type of toast ('success' or 'error').
- */
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -26,13 +16,9 @@ function showToast(message, type = 'success') {
     toast.className = `toast show ${type}`;
     setTimeout(() => {
         toast.className = toast.className.replace('show', '');
-    }, 3000); // Hide after 3 seconds
+    }, 3000);
 }
 
-/**
- * Opens the image preview modal.
- * @param {string} imageSrc The source path of the image to display.
- */
 function openModal(imageSrc) {
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
@@ -40,21 +26,13 @@ function openModal(imageSrc) {
     modalImg.src = imageSrc;
 }
 
-/**
- * Closes the image preview modal.
- */
 function closeModal() {
     const modal = document.getElementById('imageModal');
     modal.style.display = "none";
 }
 
-/**
- * Copies text to the user's clipboard.
- * @param {string} keyText The text (decryption key) to copy.
- */
 function copyKey(keyText) {
-    if (!keyText) return; // Guard clause for empty keys
-
+    if (!keyText) return;
     navigator.clipboard.writeText(keyText).then(() => {
         showToast('Key copied to clipboard!', 'success');
     }).catch(err => {
@@ -64,16 +42,16 @@ function copyKey(keyText) {
 }
 
 /**
+ * **** FIXED to call the correct delete route ****
  * Deletes a record from the history.
- * @param {number} recordId The ID of the record to delete.
+ * @param {string} recordId The ID of the record to delete.
  */
 function deleteRecord(recordId) {
     if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-        fetch(`/delete_record/${recordId}`, {
+        // Correct endpoint for deleting from the unified history
+        fetch(`/delete_history_record/${recordId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
+            headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
@@ -96,38 +74,16 @@ function deleteRecord(recordId) {
 }
 
 /**
- * Triggers the download of an image.
- * @param {string} imagePath The path to the image.
+ * **** FIXED to use the backend download route ****
+ * Triggers the download of an image from Cloudinary.
+ * @param {string} imageUrl The full Cloudinary URL of the image.
  * @param {string} filename The desired filename for the download.
  */
-function downloadImage(imagePath, filename) {
-    const downloadUrl = `/${imagePath}`;
-    console.log('Attempting to download from URL:', downloadUrl);
-
-    fetch(downloadUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename;
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            showToast('Image downloaded successfully!', 'success');
-        })
-        .catch(error => {
-            console.error('Download error:', error);
-            showToast(`Download failed: ${error.message}`, 'error');
-        });
+function downloadImage(imageUrl, filename) {
+    // Construct the URL for our new Flask download route
+    const downloadUrl = `/download_image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+    
+    // Simply navigate to the URL. The browser will handle the download
+    // because the server will send the correct headers.
+    window.location.href = downloadUrl;
 }

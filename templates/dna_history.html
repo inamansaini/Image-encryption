@@ -31,27 +31,32 @@
         <div class="history-grid">
             {% for record in records %}
             <div class="history-card" id="record-{{ record.id }}">
-                <button class="delete-btn" data-id="{{ record.id }}" title="Delete Record">
+                <button class="delete-btn" onclick="deleteRecord('{{ record.id }}')" title="Delete Record">
                     <i class="fas fa-trash-alt"></i>
                 </button>
                 <h3>
                     <i class="far fa-clock"></i>
-                    {{ record.created_at.strftime('%B %d, %Y - %I:%M %p') }}
+                    {{ record.created_at.strftime('%B %d, %Y - %I:%M %p') }} UTC
                 </h3>
                 
                 <div class="image-gallery">
                     <div class="image-item" title="Click to enlarge">
-                        <img src="{{ url_for('serve_temp_file', filename=record.original_path.split('/')[-1]) }}" alt="Original Image">
+                        <img src="{{ record.original_url }}" alt="Original Image" onclick="openModal('{{ record.original_url }}')">
                         <p>Original</p>
                     </div>
                     <div class="image-item" title="Click to enlarge">
-                        <img src="{{ url_for('serve_temp_file', filename=record.encrypted_path.split('/')[-1]) }}" alt="Encrypted Image">
+                        <img src="{{ record.encrypted_url }}" alt="Encrypted Image" onclick="openModal('{{ record.encrypted_url }}')">
                         <p>Encrypted</p>
+                        <button class="download-btn" 
+                                onclick="downloadImage('{{ record.encrypted_url }}', 'encrypted_dna_{{ record.id }}.png')" 
+                                title="Download Encrypted Image">
+                            <i class="fas fa-download"></i>
+                        </button>
                     </div>
                 </div>
 
                 <div class="key-info">
-                     <button class="copy-key-btn" title="Copy Key">
+                     <button class="copy-key-btn" onclick="copyKey('{{ record.key }}')" title="Copy Key">
                         <i class="fas fa-copy"></i>
                     </button>
                     <strong><i class="fas fa-key"></i> Key:</strong>
@@ -72,7 +77,7 @@
     </div>
 
     <div id="imageModal" class="modal">
-        <span class="close-modal">&times;</span>
+        <span class="close-modal" onclick="closeModal()">&times;</span>
         <img class="modal-content" id="modalImage">
     </div>
 

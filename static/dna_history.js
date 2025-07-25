@@ -1,107 +1,112 @@
-document.addEventListener('DOMContentLoaded', () => {
+// This file is now generic and can be used for any history page.
 
-    // --- Modal Logic ---
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => {
+        toast.className = toast.className.replace('show', '');
+    }, 3000);
+}
+
+function copyKey(keyText) {
+    if (!keyText) return;
+    navigator.clipboard.writeText(keyText).then(() => {
+        showToast('Key copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy key:', err);
+        showToast('Failed to copy key.', 'error');
+    });
+}
+
+/**
+ * **** FIXED to call the correct unified delete route ****
+ * Deletes a record from the history.
+ * @param {string} recordId The ID of the record to delete.
+ */
+function deleteRecord(recordId) {
+    if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+        // Correct endpoint for deleting from the unified history
+        fetch(`/delete_history_record/${recordId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`record-${recordId}`);
+                if (card) {
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 300);
+                }
+                showToast('Record deleted successfully', 'success');
+            } else {
+                showToast('Failed to delete record: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to delete record', 'error');
+        });
+    }
+}
+
+function openModal(imgSrc) {
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
-    const closeModal = document.querySelector('.close-modal');
-
-    document.querySelectorAll('.image-item img').forEach(img => {
-        img.addEventListener('click', function() {
-            modal.style.display = 'block';
-            modalImg.src = this.src;
-        });
-    });
-
-    if (closeModal) {
-        closeModal.onclick = () => {
-            modal.style.display = 'none';
-        }
+    if (modal && modalImg) {
+        modal.style.display = 'block';
+        modalImg.src = imgSrc;
     }
-    
-    // Close modal if background is clicked
-    window.onclick = (event) => {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
+}
+
+function closeModal() {
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
+}
 
-    // --- Toast Notification Logic ---
-    let toastTimeout;
-    const showToast = (message, type = 'success') => {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = 'toast show';
-        toast.classList.add(type);
-
-        // Clear previous timeout if it exists
-        clearTimeout(toastTimeout);
-        
-        // Hide the toast after 3 seconds
-        toastTimeout = setTimeout(() => {
-            toast.className = toast.className.replace('show', '');
-        }, 3000);
-    };
+/**
+ * **** FIXED to use the backend download route ****
+ * Triggers the download of an image from Cloudinary.
+ * @param {string} imageUrl The full Cloudinary URL of the image.
+ * @param {string} filename The desired filename for the download.
+ */
+function downloadImage(imageUrl, filename) {
+    // Construct the URL for our new Flask download route
+    const downloadUrl = `/download_image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
     
-    // --- Copy Key Logic ---
+    // Simply navigate to the URL. The browser will handle the download.
+    window.location.href = downloadUrl;
+}
+
+// Add event listeners when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Add click listeners for all copy buttons
     document.querySelectorAll('.copy-key-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const keyInfo = this.closest('.key-info');
-            const keyText = keyInfo.querySelector('span').innerText;
-            
-            navigator.clipboard.writeText(keyText).then(() => {
-                showToast('Key copied to clipboard!', 'success');
-            }).catch(err => {
-                showToast('Failed to copy key.', 'error');
-                console.error('Could not copy text: ', err);
-            });
-        });
-    });
-
-    // --- Delete Record Logic ---
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const recordId = this.dataset.id;
-            const card = document.getElementById(`record-${recordId}`);
-
-            if (confirm('Are you sure you want to permanently delete this record?')) {
-                fetch(`/delete_dna_record/${recordId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Animate card out before removing
-                        card.style.transition = 'opacity 0.5s, transform 0.5s';
-                        card.style.opacity = '0';
-                        card.style.transform = 'scale(0.9)';
-                        setTimeout(() => {
-                            card.remove();
-                            // Check if grid is now empty
-                            const grid = document.querySelector('.history-grid');
-                            if (grid && grid.children.length === 0) {
-                                document.querySelector('.main-container').innerHTML = `
-                                    <div class="no-records">
-                                        <h2>No History Found</h2>
-                                        <p>You haven't performed any DNA-based encryptions yet.</p>
-                                        <a href="/dna_based" class="action-btn">
-                                            <i class="fas fa-shield-alt"></i> Encrypt an Image Now
-                                        </a>
-                                    </div>`;
-                            }
-                        }, 500);
-                        showToast('Record deleted successfully!', 'success');
-                    } else {
-                        showToast(data.error || 'Failed to delete record.', 'error');
-                    }
-                })
-                .catch(error => {
-                    showToast('An error occurred.', 'error');
-                    console.error('Error:', error);
-                });
+        button.addEventListener('click', (e) => {
+            const keySpan = e.currentTarget.nextElementSibling;
+            if (keySpan) {
+                copyKey(keySpan.innerText);
             }
         });
+    });
+
+    // Add click listeners for all delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const recordId = e.currentTarget.parentElement.id.replace('record-', '');
+            deleteRecord(recordId);
+        });
+    });
+
+    // Add click listeners for closing the modal
+    const modal = document.getElementById('imageModal');
+    const closeModalBtn = document.querySelector('.close-modal');
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
     });
 });

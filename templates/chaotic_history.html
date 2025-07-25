@@ -30,22 +30,22 @@
             <div class="history-grid">
                 {% for record in records %}
                 <div class="history-card" id="record-{{ record.id }}">
-                    <button class="delete-btn" onclick="deleteRecord({{ record.id }})" title="Delete Record">
+                    <button class="delete-btn" onclick="deleteRecord('{{ record.id }}')" title="Delete Record">
                         <i class="fas fa-trash"></i>
                     </button>
                     
-                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</h3>
+                    <h3><i class="fas fa-clock"></i> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</h3>
                     
                     <div class="image-gallery">
                         <div class="image-item">
-                            <img src="/{{ record.original_path }}" alt="Original Image" onclick="openModal('/{{ record.original_path }}')">
+                            <img src="{{ record.original_url }}" alt="Original Image" onclick="openModal('{{ record.original_url }}')">
                             <p>Original</p>
                         </div>
                         <div class="image-item">
-                            <img src="/{{ record.encrypted_path }}" alt="Encrypted Image" onclick="openModal('/{{ record.encrypted_path }}')">
+                            <img src="{{ record.encrypted_url }}" alt="Encrypted Image" onclick="openModal('{{ record.encrypted_url }}')">
                             <p>Encrypted</p>
                             <button class="download-btn" 
-                                    onclick="downloadImage('{{ record.encrypted_path }}', 'encrypted_{{ record.id }}.png')" 
+                                    onclick="downloadImage('{{ record.encrypted_url }}', 'encrypted_{{ record.id }}.png')" 
                                     title="Download Encrypted Image">
                                 <i class="fas fa-download"></i>
                             </button>
@@ -56,7 +56,7 @@
                         <button class="copy-key-btn" onclick="copyKey('{{ record.key }}')" title="Copy Key">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <strong><i class="fas fa-cogs"></i> Algo:</strong> {{ record.algorithm | capitalize }}<br>
+                        <strong><i class="fas fa-cogs"></i> Algo:</strong> {{ record.details.algorithm | capitalize }}<br>
                         <strong><i class="fas fa-key"></i> Key:</strong>
                         <span>{{ record.key }}</span>
                     </div>

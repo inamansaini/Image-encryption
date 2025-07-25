@@ -14,7 +14,7 @@
     <nav class="top-nav">
         <div>
             <a href="{{ url_for('select_method') }}"><i class="fas fa-arrow-left"></i> Back to Methods</a>
-            <a href="{{ url_for('dna_history') }}"><i class="fas fa-history"></i> View History</a>
+            <a href="{{ url_for('history_by_method', method='dna') }}"><i class="fas fa-history"></i> View History</a>
         </div>
         <div>
             <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
