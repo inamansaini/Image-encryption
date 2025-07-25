@@ -29,10 +29,10 @@ app.secret_key = os.environ.get('SECRET_KEY', 'a-very-secret-key')
 
 # Configure Cloudinary using environment variables from your Render dashboard
 cloudinary.config(
-  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
-  api_key = os.environ.get('CLOUDINARY_API_KEY'),
-  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
-  secure = True
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key = os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
+    secure = True
 )
 # --- END: LOAD ENVIRONMENT VARIABLES AND CLOUDINARY CONFIG ---
 
@@ -86,6 +86,37 @@ def read_image_from_request(file_key='image'):
         raise ValueError("Could not decode image file.")
     return image_array
 
+def read_and_resize_image(file_key='image'):
+    """
+    Reads an image from request, resizing it if its total pixels would
+    create a PNG file larger than the upload limit (~10MB).
+    """
+    MAX_PIXELS = 3400000 
+
+    if file_key not in request.files:
+        raise ValueError(f"'{file_key}' image not found in request.")
+    
+    image_file = request.files[file_key]
+    in_memory_file = np.frombuffer(image_file.read(), np.uint8)
+    image_array = cv2.imdecode(in_memory_file, cv2.IMREAD_COLOR)
+
+    if image_array is None:
+        raise ValueError("Could not decode image file.")
+
+    h, w, _ = image_array.shape
+    current_pixels = h * w
+    
+    if current_pixels > MAX_PIXELS:
+        scale_factor = math.sqrt(MAX_PIXELS / current_pixels)
+        new_w = int(w * scale_factor)
+        new_h = int(h * scale_factor)
+        
+        print(f"Image pixel count ({current_pixels}) is too high. Resizing from {w}x{h} to {new_w}x{new_h}.")
+        
+        image_array = cv2.resize(image_array, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    
+    return image_array
+
 def fetch_image_from_url(url):
     """Fetches an image from a URL and returns it as a NumPy array."""
     response = requests.get(url)
@@ -132,9 +163,7 @@ def delete_history_record(user_id, record_id):
 # --- END: DATABASE & HISTORY FUNCTIONS ---
 
 
-# --- START: CORE PROCESSING LOGIC (MODIFIED FOR IN-MEMORY OPERATION) ---
-# NOTE: These functions now accept and return NumPy arrays instead of file paths.
-
+# --- START: CORE PROCESSING LOGIC ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def data_to_binary(data):
@@ -152,7 +181,7 @@ def reveal_data_lsb(stego_image, key):
         binary_data += str(flat_pixels[i] & 1)
         if binary_data.endswith(delimiter):
             break
-    else: # This else belongs to the for loop, runs if loop finishes without break
+    else: 
         raise ValueError("Delimiter not found in image.")
     
     binary_data_without_delimiter = binary_data[:-len(delimiter)]
@@ -200,7 +229,7 @@ def apply_arnold_cat_map(image_array, iterations=10, decrypt=False):
         if not decrypt:
             src_x = (x_coords + y_coords) % n
             src_y = (x_coords + 2 * y_coords) % n
-        else: # Inverse Arnold Cat Map
+        else:
             src_x = (2 * x_coords - y_coords) % n
             src_y = (-x_coords + y_coords) % n
         current_img = current_img[src_y, src_x]
@@ -214,7 +243,7 @@ def get_keystream(image_shape, key_str, algorithm):
         cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=b'01234567')
     elif algorithm == 'des':
         cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=b'0123')
-    else: # XOR case
+    else: 
         try:
             key_val = int(key_str)
             if not (0 <= key_val <= 255): raise ValueError("XOR key must be 0-255.")
@@ -233,7 +262,6 @@ def process_bitplane_image(image_array, planes_to_process, key_str, algorithm):
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
     shape_to_use = image_array.shape
     image_flat_bytes = image_array.flatten()
-    # A simplified key stream for NN example; replace with your actual complex logic if needed
     seed = hashlib.sha512(key_string.encode()).digest()
     total_bytes = len(image_flat_bytes)
     key_stream = np.frombuffer(seed * (total_bytes // len(seed) + 1), dtype=np.uint8)[:total_bytes]
@@ -241,8 +269,6 @@ def process_nn_image_cipher(image_array, key_string, decrypt=False):
     return processed_flat_bytes.reshape(shape_to_use)
 
 def process_dna_image(image_array, key, decrypt=False):
-    # This is a placeholder for your complex DNA logic
-    # For a working example, we'll use a simple XOR cipher based on the key
     key_hash = hashlib.sha256(key.encode()).digest()
     h, w, c = image_array.shape
     total_bytes = h * w * c
@@ -299,7 +325,6 @@ def select_method():
     if 'user_id' not in session: return redirect(url_for('login'))
     return render_template('select_method.html')
 
-# Routes to render the individual method pages
 @app.route('/standard')
 def standard(): return render_template('steganography.html') if 'user_id' in session else redirect(url_for('login'))
 @app.route('/chaotic')
@@ -315,33 +340,64 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 
 # --- START: ENCRYPTION & STEGANOGRAPHY ROUTES ---
 
-@app.route('/standard_encrypt', methods=['POST'])
-def standard_encrypt():
+# --- MODIFIED: This entire function is replaced with new resizing logic ---
+@app.route('/hide', methods=['POST'])
+def hide():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
+        # 1. Read cover image and cap its size for Cloudinary compatibility
         cover_image = read_image_from_request('cover')
+        MAX_PIXELS = 3400000  # Safe limit for ~10MB PNG
+        h, w, _ = cover_image.shape
+        if h * w > MAX_PIXELS:
+            scale = math.sqrt(MAX_PIXELS / (h * w))
+            new_w, new_h = int(w * scale), int(h * scale)
+            cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            print(f"Steganography: Cover image resized to {new_w}x{new_h} to meet size limits.")
+
+        cover_capacity_bits = cover_image.shape[0] * cover_image.shape[1] * 3
+
+        # 2. Read secret image
         secret_image = read_image_from_request('secret')
-
-        is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
-        if not is_success: return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
-
+        
+        # 3. Iteratively resize secret image until its payload fits in the cover
         encryption_key = Fernet.generate_key()
-        encrypted_secret_data = Fernet(encryption_key).encrypt(secret_data_encoded.tobytes())
-        data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
         
-        payload_bits, num_pixels_needed = len(data_to_hide) * 8, math.ceil(len(data_to_hide) * 8 / 3)
-        side_length = math.ceil(math.sqrt(num_pixels_needed))
-        stego_image = cv2.resize(cover_image, (side_length, side_length), interpolation=cv2.INTER_LINEAR)
-        
+        while True:
+            is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
+            if not is_success:
+                return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
+
+            encrypted_secret_data = Fernet(encryption_key).encrypt(secret_data_encoded.tobytes())
+            data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
+            payload_bits = len(data_to_hide) * 8
+
+            if payload_bits <= cover_capacity_bits:
+                break  # Success, it fits
+
+            # If it doesn't fit, shrink the secret image by 10% and re-evaluate
+            h_s, w_s, _ = secret_image.shape
+            new_w = int(w_s * 0.9)
+            new_h = int(h_s * 0.9)
+
+            if new_w < 1 or new_h < 1:
+                return jsonify({'success': False, 'error': 'Secret image is too large for the cover image, even after aggressive resizing.'})
+            
+            secret_image = cv2.resize(secret_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            print(f"Steganography: Secret image too large, resizing to {new_w}x{new_h} and re-checking capacity.")
+
+        # 4. Embed the data (now guaranteed to fit)
         binary_secret_data = data_to_binary(data_to_hide)
-        flat_pixels = stego_image.ravel()
+        flat_pixels = cover_image.ravel()
         for i in range(payload_bits):
             flat_pixels[i] = (flat_pixels[i] & 0xFE) | int(binary_secret_data[i])
         
+        stego_image = flat_pixels.reshape(cover_image.shape)
         key = encryption_key.decode('utf-8')
         
+        # 5. Upload all three images (now guaranteed to be size-compliant)
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
-        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
+        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image) # Uploads the potentially resized secret image
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
         
         add_history_record(session['user_id'], 'Steganography (LSB)', {
@@ -350,15 +406,17 @@ def standard_encrypt():
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid, 'key': key
         })
         return jsonify({'success': True, 'hidden_image': encrypted_url, 'key': key})
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': 'An unexpected error occurred: ' + str(e)})
+
 
 @app.route('/chaotic_encrypt', methods=['POST'])
 def chaotic_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        original_image = read_image_from_request()
+        original_image = read_and_resize_image()
         algorithm = request.form.get('algorithm')
         user_key = request.form.get('key', '').strip()
         
@@ -419,7 +477,7 @@ def bitplane_encrypt():
 def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        original_image = read_image_from_request()
+        original_image = read_and_resize_image()
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
         
         encrypted_image = process_nn_image_cipher(original_image, key)
@@ -433,6 +491,27 @@ def neural_network_encrypt():
             'key': key, 'details': {'original_shape': str(original_image.shape)}
         })
         return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/neural_network_decrypt', methods=['POST'])
+def neural_network_decrypt():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        encrypted_image = read_and_resize_image('image')
+        key = request.form.get('key')
+
+        if not key:
+            return jsonify({'success': False, 'error': 'Decryption key is required.'})
+
+        decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
+        
+        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
+
+        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -463,6 +542,32 @@ def dna_encrypt():
 
 
 # --- START: DECRYPTION, HISTORY & DOWNLOAD ROUTES ---
+
+@app.route('/decrypt', methods=['POST'])
+def decrypt():
+    if 'user_id' not in session: 
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        hidden_image = read_image_from_request('hidden')
+        key = request.form.get('key')
+
+        if not key:
+            return jsonify({'success': False, 'error': 'Decryption key is required.'})
+
+        decrypted_image_array = reveal_data_lsb(hidden_image, key)
+        if decrypted_image_array is None:
+            raise ValueError("Failed to decode the revealed secret image data.")
+
+        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image_array, folder="decrypted_images")
+        
+        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+    
+    except Exception as e:
+        traceback.print_exc()
+        if "Incorrect padding" in str(e) or "Invalid token" in str(e):
+             return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
+        return jsonify({'success': False, 'error': f'An error occurred: {e}'})
+
 
 @app.route('/decrypt_from_history/<string:record_id>', methods=['POST'])
 def decrypt_from_history(record_id):

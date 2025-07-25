@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- ENCRYPTION LOGIC ---
     setupImagePreview('nnOriginalImage', 'nnOriginalImage-preview-container', 'nnOriginalImagePreview', 'nn-original-filename');
 
     document.getElementById('nnEncryptBtn').addEventListener('click', function() {
@@ -62,10 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     setStatus('encryptStatus', 'Encryption successful!');
-                    keyInput.value = data.key; // Update key field if it was auto-generated
+                    keyInput.value = data.key; 
                     document.getElementById('nnEncryptedImage').src = data.encrypted_image + '?' + new Date().getTime();
                     
-                    // **** FIXED download link to use the correct route ****
                     const downloadBtn = document.getElementById('nnDownloadBtn');
                     const downloadUrl = `/download_image?url=${encodeURIComponent(data.encrypted_image)}&filename=nn_encrypted.png`;
                     downloadBtn.href = downloadUrl;
@@ -91,5 +91,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Encryption key copied to clipboard!');
             });
         }
+    });
+
+    // --- DECRYPTION LOGIC ---
+    setupImagePreview('nnEncryptedImageInput', 'nnEncryptedImageInput-preview-container', 'nnEncryptedImageInputPreview', 'nn-encrypted-filename');
+
+    document.getElementById('nnDecryptBtn').addEventListener('click', function() {
+        const button = this;
+        const originalBtnContent = button.innerHTML;
+        const fileInput = document.getElementById('nnEncryptedImageInput');
+        const keyInput = document.getElementById('nnDecryptKey');
+
+        if (!fileInput.files[0]) {
+            alert('Please select an encrypted image to decrypt.');
+            return;
+        }
+        if (!keyInput.value.trim()) {
+            alert('Please enter the decryption key.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('key', keyInput.value.trim());
+
+        setButtonProcessing(button, originalBtnContent, true);
+        setStatus('decryptStatus', 'Initializing AI model and decrypting image...');
+        document.getElementById('nnDecryptedSection').classList.add('hidden');
+
+        fetch('/neural_network_decrypt', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    setStatus('decryptStatus', 'Decryption successful!');
+                    document.getElementById('nnDecryptedImage').src = data.decrypted_image + '?' + new Date().getTime();
+                    
+                    const downloadBtn = document.getElementById('nnDownloadDecryptedBtn');
+                    const downloadUrl = `/download_image?url=${encodeURIComponent(data.decrypted_image)}&filename=nn_decrypted.png`;
+                    downloadBtn.href = downloadUrl;
+
+                    document.getElementById('nnDecryptedSection').classList.remove('hidden');
+                } else {
+                    setStatus('decryptStatus', 'Error: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                setStatus('decryptStatus', 'A critical error occurred.', true);
+            })
+            .finally(() => {
+                setButtonProcessing(button, originalBtnContent, false);
+            });
     });
 });
