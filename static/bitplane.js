@@ -1,10 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    /**
-     * Toggles the button state between normal and processing.
-     * @param {string} buttonId - The ID of the button element.
-     * @param {string} originalContent - The original HTML content of the button.
-     * @param {boolean} isProcessing - True to show processing state, false to restore.
-     */
     function setButtonProcessing(buttonId, originalContent, isProcessing) {
         const button = document.getElementById(buttonId);
         if (button) {
@@ -18,7 +12,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Preview image functionality ---
     function setupImagePreview(inputId, previewId) {
         document.getElementById(inputId).addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -37,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setupImagePreview('bpOriginalImage', 'bpOriginalPreview');
     setupImagePreview('bpEncryptedImageUpload', 'bpEncryptedPreview');
 
-    // --- Encrypt button handler ---
     document.getElementById('bpEncryptBtn').addEventListener('click', function() {
         const button = this;
         const originalBtnContent = button.innerHTML;
@@ -94,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- Decrypt button handler ---
     document.getElementById('bpDecryptBtn').addEventListener('click', function() {
         const button = this;
         const originalBtnContent = button.innerHTML;

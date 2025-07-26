@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- ENCRYPTION LOGIC ---
     setupImagePreview('nnOriginalImage', 'nnOriginalImage-preview-container', 'nnOriginalImagePreview', 'nn-original-filename');
 
     document.getElementById('nnEncryptBtn').addEventListener('click', function() {
@@ -93,7 +92,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- DECRYPTION LOGIC ---
     setupImagePreview('nnEncryptedImageInput', 'nnEncryptedImageInput-preview-container', 'nnEncryptedImageInputPreview', 'nn-encrypted-filename');
 
     document.getElementById('nnDecryptBtn').addEventListener('click', function() {

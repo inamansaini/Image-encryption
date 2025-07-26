@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalImg = document.getElementById('modalImage');
     const closeBtn = document.querySelector('.modal .close');
 
-    // --- Modal Logic ---
     function openModal(imgSrc) {
         if (modal && modalImg) {
             modal.style.display = 'block';
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Assign openModal to global scope so onclick can find it
     window.openModal = openModal;
     window.closeModal = closeModal;
 
@@ -30,12 +28,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Attach event listeners to all images with the 'history-img' class
     document.querySelectorAll('.history-img').forEach(img => {
         img.addEventListener('click', () => openModal(img.src));
     });
 
-    // --- Toast Notification ---
     function showToast(message, isSuccess = true) {
         const toast = document.getElementById('toast');
         toast.textContent = message;
@@ -47,9 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
             toast.className = toast.className.replace('show', '');
         }, 3000);
     }
-    window.showToast = showToast; // Make it globally accessible if needed
+    window.showToast = showToast;
 
-    // --- Copy Key Logic ---
     function copyKey(keyText) {
         if (!keyText) return;
         navigator.clipboard.writeText(keyText).then(() => {
@@ -59,14 +54,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Failed to copy key.', false);
         });
     }
-    window.copyKey = copyKey; // Make it globally accessible
+    window.copyKey = copyKey;
 
-    // --- Delete Record Logic ---
     function deleteRecord(recordId) {
         if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-            /**
-             * **** FIXED: Changed route from /delete_neural_record to /delete_history_record ****
-             */
             fetch(`/delete_history_record/${recordId}`, {
                 method: 'POST',
             })
@@ -80,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         setTimeout(() => {
                             card.remove();
                             if (document.querySelectorAll('.history-card').length === 0) {
-                                location.reload(); // Reload to show the "No Records" message
+                                location.reload();
                             }
                         }, 500);
                     }
@@ -95,15 +86,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    window.deleteRecord = deleteRecord; // Make it globally accessible
+    window.deleteRecord = deleteRecord;
 });
 
-/**
- * **** ADDED: New function to handle downloads from Cloudinary ****
- * Triggers the download of an image from Cloudinary via the backend.
- * @param {string} imageUrl The full Cloudinary URL of the image.
- * @param {string} filename The desired filename for the download.
- */
 function downloadImage(imageUrl, filename) {
     const downloadUrl = `/download_image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
     window.location.href = downloadUrl;

@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Get all elements from the DOM
     const coverImage = document.getElementById('coverImage');
     const secretImage = document.getElementById('secretImage');
     const hiddenImageUpload = document.getElementById('hiddenImageUpload');
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFileInputProxy('secretImage');
     setupFileInputProxy('hiddenImageUpload');
 
-    // Preview images when selected
     if (coverImage && coverPreview) {
         coverImage.addEventListener('change', function(e) {
             previewImage(e.target, coverPreview);
@@ -52,7 +50,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Hide image button functionality
     if (hideBtn) {
         hideBtn.addEventListener('click', async function() {
             const coverFile = coverImage?.files[0];
@@ -90,7 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (keyDisplay) keyDisplay.textContent = result.key;
                     if (resultSection) resultSection.classList.remove('hidden');
                     
-                    // --- MODIFIED: Use the /download_image route ---
                     if (downloadBtn) {
                         downloadBtn.href = `/download_image?url=${encodeURIComponent(result.hidden_image)}&filename=hidden_image.png`;
                     }
@@ -115,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Decrypt button functionality
     if (decryptBtn) {
         decryptBtn.addEventListener('click', async function() {
             const hiddenFile = hiddenImageUpload?.files[0];
@@ -154,7 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         };
                     }
-                    // --- MODIFIED: Use the /download_image route ---
                     if (downloadDecryptedBtn) {
                         downloadDecryptedBtn.href = `/download_image?url=${encodeURIComponent(result.decrypted_image)}&filename=revealed_image.png`;
                     }
@@ -171,7 +165,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Copy key button functionality
     if (copyKeyBtn && keyDisplay) {
         copyKeyBtn.addEventListener('click', function() {
             const key = keyDisplay.textContent;
@@ -183,14 +176,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Helper function to preview images
     function previewImage(input, previewElement) {
         const file = input?.files[0];
         if (!file || !previewElement) return;
 
         if (!file.type.startsWith('image/')) {
             alert('Please select a valid image file.');
-            input.value = ''; // Clear the invalid input
+            input.value = '';
             return;
         }
 

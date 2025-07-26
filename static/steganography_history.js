@@ -41,14 +41,8 @@ function copyKey(keyText) {
     });
 }
 
-/**
- * **** FIXED to call the correct delete route ****
- * Deletes a record from the history.
- * @param {string} recordId The ID of the record to delete.
- */
 function deleteRecord(recordId) {
     if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-        // Correct endpoint for deleting from the unified history
         fetch(`/delete_history_record/${recordId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -73,17 +67,7 @@ function deleteRecord(recordId) {
     }
 }
 
-/**
- * **** FIXED to use the backend download route ****
- * Triggers the download of an image from Cloudinary.
- * @param {string} imageUrl The full Cloudinary URL of the image.
- * @param {string} filename The desired filename for the download.
- */
 function downloadImage(imageUrl, filename) {
-    // Construct the URL for our new Flask download route
     const downloadUrl = `/download_image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
-    
-    // Simply navigate to the URL. The browser will handle the download
-    // because the server will send the correct headers.
     window.location.href = downloadUrl;
 }

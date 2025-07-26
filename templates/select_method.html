@@ -17,6 +17,10 @@
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
             --glass-hover-bg: rgba(255, 255, 255, 0.1);
+            --warning-bg: rgba(255, 193, 7, 0.1);
+            --warning-border: rgba(255, 193, 7, 0.3);
+            --warning-text: #ffeaa7;
+            --warning-icon: #ffc107;
         }
 
         * {
@@ -80,7 +84,7 @@
         
         .page-header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             animation: fadeInDown 0.8s ease-out;
         }
         
@@ -97,6 +101,38 @@
         .page-header p {
             font-size: 1.1rem;
             color: var(--label-color);
+        }
+        
+        .recommendation-box {
+            width: 100%;
+            max-width: 860px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 3rem;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: fadeInDown 0.8s ease-out 0.2s backwards;
+        }
+
+        .recommendation-box i {
+            font-size: 1.5rem;
+            color: var(--warning-icon);
+            flex-shrink: 0;
+        }
+
+        .recommendation-box p {
+            margin: 0;
+            color: var(--warning-text);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .recommendation-box strong {
+            color: var(--primary-color);
+            font-weight: 500;
         }
 
         .method-container {
@@ -131,7 +167,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* FIX: Added keyframe for disabled card animation */
         @keyframes fadeInUpDisabled {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 0.5; transform: translateY(0); }
@@ -167,12 +202,9 @@
             min-height: 100px;
         }
 
-        /* --- STYLES FOR DISABLED CARD --- */
         .method-card.disabled {
-            /* FIX: Removed opacity: 0.5; to allow animation to control opacity */
             cursor: not-allowed;
             position: relative;
-            /* FIX: Use the dedicated animation for the disabled card */
             animation-name: fadeInUpDisabled;
         }
 
@@ -197,7 +229,6 @@
             display: inline-block;
         }
 
-        /* --- RESPONSIVE STYLES --- */
         @media (max-width: 768px) {
             .top-nav {
                 padding: 1rem;
@@ -208,7 +239,7 @@
             }
 
             .page-header {
-                margin-bottom: 2rem;
+                margin-bottom: 1.5rem;
             }
             
             .page-header h1 {
@@ -217,6 +248,11 @@
 
             .page-header p {
                 font-size: 1rem;
+            }
+
+            .recommendation-box {
+                margin-bottom: 2rem;
+                padding: 1rem;
             }
 
             .method-container {
@@ -258,6 +294,13 @@
         <div class="page-header">
             <h1>Choose Your Method</h1>
             <p>Select a secure technique to protect your images</p>
+        </div>
+
+        <div class="recommendation-box">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+                <strong>Recommendation:</strong> For your privacy and security, please avoid using personal or sensitive images. This tool is intended for educational and experimental purposes.
+            </p>
         </div>
 
         <div class="method-container">

@@ -1,18 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Get buttons
     const encryptBtn = document.getElementById('encryptBtn');
     const decryptBtn = document.getElementById('decryptBtn');
     const copyKeyBtn = document.getElementById('copyKeyBtn');
 
-    // Store original button content to restore it after processing
     const originalEncryptBtnHTML = encryptBtn.innerHTML;
     const originalDecryptBtnHTML = decryptBtn.innerHTML;
 
-    // --- Image Preview and Filename Update Logic ---
     document.getElementById('originalImage').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            // FIX: Display the selected filename
             document.getElementById('original-filename').textContent = file.name;
             
             const reader = new FileReader();
@@ -27,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('encryptedImageUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            // FIX: Display the selected filename
             document.getElementById('encrypted-filename').textContent = file.name;
             
             const reader = new FileReader();
@@ -39,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- FIX: Single Event Listener for Copy Key ---
     copyKeyBtn.addEventListener('click', function() {
         const keyToCopy = document.getElementById('keyDisplay').textContent;
         if (keyToCopy) {
@@ -52,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- Encrypt Button Handler ---
     encryptBtn.addEventListener('click', function() {
         const fileInput = document.getElementById('originalImage');
         const chaosType = document.getElementById('chaosType').value;
@@ -96,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- Decrypt Button Handler ---
     decryptBtn.addEventListener('click', function() {
         const fileInput = document.getElementById('encryptedImageUpload');
         const decryptChaosType = document.getElementById('decryptChaosType').value;

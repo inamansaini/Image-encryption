@@ -1,11 +1,8 @@
-/* --- Aurora Glass Theme for Neural Network Encryption --- */
-
-/* --- CSS Variables --- */
 :root {
     --primary-color: #fff;
     --text-color: #eee;
     --label-color: #d1d1d1;
-    --accent-color: #3772ff; /* Blue color for primary actions */
+    --accent-color: #3772ff;
     --success-color: #10b981;
     --error-color: #f43f5e;
     --glass-bg: rgba(255, 255, 255, 0.05);
@@ -13,7 +10,6 @@
     --glass-hover-bg: rgba(255, 255, 255, 0.1);
 }
 
-/* --- Base & Body Styles --- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -34,7 +30,6 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* --- Navigation --- */
 .nav {
     width: 100%;
     padding: 1rem 2rem;
@@ -70,7 +65,6 @@ body {
     background: var(--glass-bg);
 }
 
-/* --- Header --- */
 .header {
     text-align: center;
     padding: 2rem;
@@ -92,7 +86,6 @@ body {
     margin-top: 0.5rem;
 }
 
-/* --- Main Layout --- */
 .container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -100,15 +93,16 @@ body {
     padding: 0 2rem 2rem 2rem;
     width: 100%;
     max-width: 1400px;
+    align-items: start;
     margin: 0 auto;
 }
+
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Glassmorphism Cards --- */
 .card, .info-card {
     background: var(--glass-bg);
     backdrop-filter: blur(10px);
@@ -145,7 +139,6 @@ body {
     line-height: 1.7;
 }
 
-/* --- Form Elements --- */
 .form-grid {
     display: flex;
     flex-direction: column;
@@ -188,7 +181,6 @@ body {
     flex-grow: 1;
 }
 
-/* --- File Input --- */
 .file-input { display: none; }
 
 .file-input-button {
@@ -211,7 +203,6 @@ body {
 
 .file-input-button i { margin-right: 8px; }
 
-/* --- Image Preview --- */
 .preview-container {
     margin-top: 1rem;
     display: flex;
@@ -228,7 +219,7 @@ body {
     height: 256px;
     object-fit: contain;
     border-radius: 8px;
-    display: none; /* Hidden until an image is loaded */
+    display: none;
 }
 
 .preview-container.has-image .preview,
@@ -237,7 +228,6 @@ body {
     display: block;
 }
 
-/* --- Buttons --- */
 .btn-primary, .btn-secondary, .btn-success, .copy-btn {
     padding: 14px;
     color: var(--primary-color);
@@ -261,7 +251,6 @@ body {
     transform: translateY(-2px);
 }
 
-/* --- MODIFICATION: Changed secondary button to match primary button color --- */
 .btn-secondary { background: var(--accent-color); width: 100%; }
 .btn-secondary:hover {
     background: #275dce;
@@ -273,12 +262,11 @@ body {
 .btn-success:hover { background: #059669; }
 
 .copy-btn {
-    padding: 14px; /* Match height of text input */
+    padding: 14px;
     background-color: var(--glass-hover-bg);
 }
 .copy-btn:hover { background-color: var(--accent-color); }
 
-/* --- Result & Status Sections --- */
 .hidden { display: none; }
 
 .result-section {
@@ -314,7 +302,6 @@ body {
 .status-success { background-color: rgba(16, 185, 129, 0.2); color: var(--success-color); }
 .status-error { background-color: rgba(244, 63, 94, 0.2); color: var(--error-color); }
 
-/* --- RESPONSIVE STYLES --- */
 @media (max-width: 768px) {
     .nav {
         flex-direction: column;
@@ -329,7 +316,7 @@ body {
     .nav a {
         justify-content: center;
         width: 100%;
-        margin-left: 0 !important; /* Override inline style */
+        margin-left: 0 !important;
     }
 
     .header {

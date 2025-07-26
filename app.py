@@ -21,23 +21,18 @@ import cloudinary.uploader
 import requests
 import io
 
-# --- START: LOAD ENVIRONMENT VARIABLES AND CLOUDINARY CONFIG ---
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'a-very-secret-key')
 
-# Configure Cloudinary using environment variables from your Render dashboard
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
     api_key = os.environ.get('CLOUDINARY_API_KEY'),
     api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
     secure = True
 )
-# --- END: LOAD ENVIRONMENT VARIABLES AND CLOUDINARY CONFIG ---
 
-
-# --- START: MONGODB CONNECTION ---
 MONGO_URI = os.environ.get('MONGO_URI')
 if not MONGO_URI:
     raise ValueError("No MONGO_URI environment variable set for the database connection.")
@@ -45,17 +40,11 @@ if not MONGO_URI:
 client = MongoClient(MONGO_URI)
 db = client.get_default_database()
 
-# Using a single collection for all history records is more efficient
 history_collection = db['history']
 users_collection = db['users']
 users_collection.create_index('username', unique=True)
-# --- END: MONGODB CONNECTION ---
-
-
-# --- START: IMAGE & CLOUDINARY HELPER FUNCTIONS ---
 
 def upload_numpy_to_cloudinary(image_array, folder="steganography_app"):
-    """Encodes a NumPy image array to PNG format in memory and uploads it to Cloudinary."""
     is_success, buffer = cv2.imencode('.png', image_array)
     if not is_success:
         raise ValueError("Could not encode image to PNG format.")
@@ -68,7 +57,6 @@ def upload_numpy_to_cloudinary(image_array, folder="steganography_app"):
     return upload_result['secure_url'], upload_result['public_id']
 
 def delete_from_cloudinary(public_id):
-    """Deletes a file from Cloudinary using its public_id."""
     if public_id:
         try:
             cloudinary.uploader.destroy(public_id)
@@ -76,7 +64,6 @@ def delete_from_cloudinary(public_id):
             print(f"Warning: Could not delete {public_id} from Cloudinary. Reason: {e}")
 
 def read_image_from_request(file_key='image'):
-    """Reads an image from request.files and decodes it into a NumPy array."""
     if file_key not in request.files:
         raise ValueError(f"'{file_key}' image not found in request.")
     image_file = request.files[file_key]
@@ -87,10 +74,6 @@ def read_image_from_request(file_key='image'):
     return image_array
 
 def read_and_resize_image(file_key='image'):
-    """
-    Reads an image from request, resizing it if its total pixels would
-    create a PNG file larger than the upload limit (~10MB).
-    """
     MAX_PIXELS = 3400000 
 
     if file_key not in request.files:
@@ -118,19 +101,12 @@ def read_and_resize_image(file_key='image'):
     return image_array
 
 def fetch_image_from_url(url):
-    """Fetches an image from a URL and returns it as a NumPy array."""
     response = requests.get(url)
     response.raise_for_status()
     image_array = np.frombuffer(response.content, np.uint8)
     return cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
-# --- END: IMAGE & CLOUDINARY HELPER FUNCTIONS ---
-
-
-# --- START: DATABASE & HISTORY FUNCTIONS ---
-
 def add_history_record(user_id, method, record_data):
-    """Adds a record to the unified history collection."""
     base_record = {
         'user_id': ObjectId(user_id),
         'method': method,
@@ -140,7 +116,6 @@ def add_history_record(user_id, method, record_data):
     history_collection.insert_one(base_record)
 
 def get_history_for_user(user_id, method=None):
-    """Gets all history records for a user, optionally filtered by method."""
     query = {'user_id': ObjectId(user_id)}
     if method:
         query['method'] = method
@@ -148,7 +123,6 @@ def get_history_for_user(user_id, method=None):
     return [{**r, 'id': str(r['_id'])} for r in records]
 
 def delete_history_record(user_id, record_id):
-    """Finds a record, deletes its images from Cloudinary, and then deletes the record from MongoDB."""
     record = history_collection.find_one_and_delete({
         '_id': ObjectId(record_id),
         'user_id': ObjectId(user_id)
@@ -156,14 +130,10 @@ def delete_history_record(user_id, record_id):
     if record:
         delete_from_cloudinary(record.get('original_public_id'))
         delete_from_cloudinary(record.get('encrypted_public_id'))
-        delete_from_cloudinary(record.get('secret_public_id')) # For LSB method
+        delete_from_cloudinary(record.get('secret_public_id'))
         return True
     return False
 
-# --- END: DATABASE & HISTORY FUNCTIONS ---
-
-
-# --- START: CORE PROCESSING LOGIC ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def data_to_binary(data):
@@ -235,45 +205,30 @@ def apply_arnold_cat_map(image_array, iterations=10, decrypt=False):
         current_img = current_img[src_y, src_x]
     return current_img[0:h, 0:w]
 
-# --- MODIFICATION START: Bitplane logic fixed ---
 def get_keystream(image_shape, key_str, algorithm):
-    """Generates a keystream for AES or DES."""
     h, w, c = image_shape
     total_bytes = h * w * c
-    # Use SHA256 to derive a key of the correct length from the user's string
     cipher_key = hashlib.sha256(key_str.encode()).digest()
     
     if algorithm == 'aes':
-        # AES-128 needs a 16-byte key
         cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=b'01234567')
     elif algorithm == 'des':
-        # DES needs an 8-byte key
         cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=b'0123')
     else: 
         raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
     
-    # Encrypt a block of null bytes to get the keystream
     keystream_bytes = cipher.encrypt(b'\x00' * total_bytes)
     return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
 
 def process_bitplane_image(image_array, planes_to_process, key_str, algorithm):
-    """
-    Encrypts or decrypts selected bit-planes of an image.
-    For XOR, it flips the bits (key is not used).
-    For AES/DES, it XORs with a generated keystream.
-    """
     plane_mask = sum(1 << p for p in planes_to_process)
     
     if algorithm == 'xor':
-        # For XOR, the logic is to simply flip the bits in the selected planes.
-        # The 'key' is effectively the plane mask itself.
         return cv2.bitwise_xor(image_array, plane_mask)
     else:
-        # For AES/DES, generate a keystream from the key and mask it to the selected planes.
         keystream_image = get_keystream(image_array.shape, key_str, algorithm)
         masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
         return cv2.bitwise_xor(image_array, masked_keystream)
-# --- MODIFICATION END ---
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
     shape_to_use = image_array.shape
@@ -292,10 +247,6 @@ def process_dna_image(image_array, key, decrypt=False):
     keystream = keystream.reshape(image_array.shape)
     return cv2.bitwise_xor(image_array, keystream)
 
-# --- END: CORE PROCESSING LOGIC ---
-
-
-# --- START: AUTH & UI ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -351,18 +302,13 @@ def bitplane(): return render_template('bitplane_method.html') if 'user_id' in s
 def neural_network(): return render_template('neural_network.html') if 'user_id' in session else redirect(url_for('login'))
 @app.route('/dna_based')
 def dna_based(): return render_template('dna_based.html') if 'user_id' in session else redirect(url_for('login'))
-# --- END: AUTH & UI ROUTES ---
-
-
-# --- START: ENCRYPTION & STEGANOGRAPHY ROUTES ---
 
 @app.route('/hide', methods=['POST'])
 def hide():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        # 1. Read cover image and cap its size for Cloudinary compatibility
         cover_image = read_image_from_request('cover')
-        MAX_PIXELS = 3400000  # Safe limit for ~10MB PNG
+        MAX_PIXELS = 3400000
         h, w, _ = cover_image.shape
         if h * w > MAX_PIXELS:
             scale = math.sqrt(MAX_PIXELS / (h * w))
@@ -372,10 +318,8 @@ def hide():
 
         cover_capacity_bits = cover_image.shape[0] * cover_image.shape[1] * 3
 
-        # 2. Read secret image
         secret_image = read_image_from_request('secret')
         
-        # 3. Iteratively resize secret image until its payload fits in the cover
         encryption_key = Fernet.generate_key()
         
         while True:
@@ -388,9 +332,8 @@ def hide():
             payload_bits = len(data_to_hide) * 8
 
             if payload_bits <= cover_capacity_bits:
-                break  # Success, it fits
+                break
 
-            # If it doesn't fit, shrink the secret image by 10% and re-evaluate
             h_s, w_s, _ = secret_image.shape
             new_w = int(w_s * 0.9)
             new_h = int(h_s * 0.9)
@@ -401,7 +344,6 @@ def hide():
             secret_image = cv2.resize(secret_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
             print(f"Steganography: Secret image too large, resizing to {new_w}x{new_h} and re-checking capacity.")
 
-        # 4. Embed the data (now guaranteed to fit)
         binary_secret_data = data_to_binary(data_to_hide)
         flat_pixels = cover_image.ravel()
         for i in range(payload_bits):
@@ -410,9 +352,8 @@ def hide():
         stego_image = flat_pixels.reshape(cover_image.shape)
         key = encryption_key.decode('utf-8')
         
-        # 5. Upload all three images (now guaranteed to be size-compliant)
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
-        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image) # Uploads the potentially resized secret image
+        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
         
         add_history_record(session['user_id'], 'Steganography (LSB)', {
@@ -463,7 +404,6 @@ def chaotic_encrypt():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-# --- MODIFICATION START: Bitplane route fixed ---
 @app.route('/bitplane_encrypt', methods=['POST'])
 def bitplane_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -476,7 +416,6 @@ def bitplane_encrypt():
         if algorithm == 'xor':
             key = "N/A (key is not used for XOR bit-flipping)"
         elif not key:
-            # Generate a key for AES/DES if one isn't provided
             key = secrets.token_hex(16)
         
         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
@@ -491,7 +430,6 @@ def bitplane_encrypt():
             'key': key, 'details': {'planes': planes_str, 'algorithm': algorithm}
         })
         
-        # Return a proxied download URL to fix the download button
         download_url = f"/download_image?url={encrypted_url}&filename=bitplane_encrypted.png"
         return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
         
@@ -499,7 +437,6 @@ def bitplane_encrypt():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-# --- ADDITION START: Add missing decryption route ---
 @app.route('/bitplane_decrypt', methods=['POST'])
 def bitplane_decrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -514,20 +451,16 @@ def bitplane_decrypt():
         
         planes_to_decrypt = [int(p) for p in planes_str.split(',')]
         
-        # The same processing function works for decryption
         decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm)
 
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
 
-        # Return a proxied download URL
         download_url = f"/download_image?url={decrypted_url}&filename=bitplane_decrypted.png"
         return jsonify({'success': True, 'decrypted_image': download_url})
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
-# --- ADDITION END ---
-# --- MODIFICATION END ---
 
 @app.route('/neural_network_encrypt', methods=['POST'])
 def neural_network_encrypt():
@@ -594,11 +527,6 @@ def dna_encrypt():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
-# --- END: ENCRYPTION & STEGANOGRAPHY ROUTES ---
-
-
-# --- START: DECRYPTION, HISTORY & DOWNLOAD ROUTES ---
-
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
     if 'user_id' not in session: 
@@ -621,13 +549,12 @@ def decrypt():
     except Exception as e:
         traceback.print_exc()
         if "Incorrect padding" in str(e) or "Invalid token" in str(e):
-             return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
+                 return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
         return jsonify({'success': False, 'error': f'An error occurred: {e}'})
 
 
 @app.route('/decrypt_from_history/<string:record_id>', methods=['POST'])
 def decrypt_from_history(record_id):
-    """Unified decryption route that works from the history pages."""
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     
     try:
@@ -650,7 +577,6 @@ def decrypt_from_history(record_id):
                 decrypted_image = apply_pixel_shuffling(encrypted_image, key, algo, decrypt=True)
         elif method == 'Bitplane':
             planes = [int(p) for p in details['planes'].split(',')]
-            # The corrected logic works for history decryption as well
             decrypted_image = process_bitplane_image(encrypted_image, planes, key, details['algorithm'])
         elif method == 'Neural Network':
             decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
@@ -672,14 +598,12 @@ def decrypt_from_history(record_id):
 
 @app.route('/all_history')
 def all_history():
-    """A unified history page for all methods."""
     if 'user_id' not in session: return redirect(url_for('login'))
     records = get_history_for_user(session['user_id'])
     return render_template('all_history.html', records=records, username=session.get('username'))
 
 @app.route('/history/<string:method>')
 def history_by_method(method):
-    """Serves specific history pages, e.g., /history/chaotic."""
     if 'user_id' not in session: return redirect(url_for('login'))
     
     method_map = {
@@ -704,7 +628,6 @@ def delete_history_record_route(record_id):
 
 @app.route('/download_image')
 def download_image():
-    """Downloads an image from a Cloudinary URL, making it work for the history pages."""
     if 'user_id' not in session: abort(401)
     
     image_url = request.args.get('url')
@@ -728,9 +651,5 @@ def download_image():
     except requests.exceptions.RequestException as e:
         abort(500, f"Could not fetch image from URL: {e}")
 
-# --- END: DECRYPTION, HISTORY & DOWNLOAD ROUTES ---
-
-
 if __name__ == '__main__':
-    # For local development, use debug=True. Render will use Gunicorn in production.
     app.run(debug=True, host='0.0.0.0', port=5000)
