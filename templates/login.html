@@ -175,7 +175,7 @@
             top: -10px;
             left: 10px;
             font-size: 0.8rem;
-            background: #2a2658;
+            background: #302b63; /* Matched to the gradient for consistency */
             padding: 0 5px;
             color: var(--accent-color);
         }
@@ -241,29 +241,76 @@
             border: 1px solid rgba(255, 82, 82, 0.3);
         }
 
-        @media (max-width: 800px) {
+        /* --- Responsive Styles --- */
+        @media (max-width: 900px) {
+            body {
+                /* Align content to the top on mobile, which is better for scrolling */
+                align-items: flex-start;
+                padding-top: 2rem;
+                overflow-y: auto; /* Allow vertical scrolling */
+            }
+
             .page-wrapper {
                 flex-direction: column;
                 min-height: auto;
+                width: 100%;
+                max-width: 500px; /* Constrain width on tablets/large phones */
             }
+
             .info-panel {
                 border-right: none;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                padding: 2.5rem;
+                padding: 2rem;
                 text-align: center;
             }
+
             .info-panel h1 {
                 justify-content: center;
+                font-size: 1.8rem; /* Slightly smaller */
             }
+
             .info-panel .features h3 {
                 display: inline-block;
             }
+
             .info-panel .features ul {
                 display: inline-block;
                 text-align: left;
                 margin-top: 1rem;
             }
+
+            .form-panel {
+                padding: 2.5rem 2rem; /* Add more vertical padding */
+            }
+
+            .auth-header h2 {
+                font-size: 1.8rem; /* Slightly smaller */
+            }
         }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem; /* Adjust padding for small screens */
+            }
+
+            .info-panel, .form-panel {
+                padding: 1.5rem; /* Less padding on small screens */
+            }
+
+            .info-panel h1 {
+                font-size: 1.5rem; /* Smaller font for phones */
+                gap: 0.5rem; /* Reduce gap between icon and text */
+            }
+
+            .auth-header h2 {
+                font-size: 1.6rem; /* Smaller font for phones */
+            }
+            
+            .info-panel .tagline {
+                font-size: 0.9rem;
+            }
+        }
+
     </style>
 </head>
 <body>
