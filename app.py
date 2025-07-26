@@ -235,29 +235,45 @@ def apply_arnold_cat_map(image_array, iterations=10, decrypt=False):
         current_img = current_img[src_y, src_x]
     return current_img[0:h, 0:w]
 
+# --- MODIFICATION START: Bitplane logic fixed ---
 def get_keystream(image_shape, key_str, algorithm):
+    """Generates a keystream for AES or DES."""
     h, w, c = image_shape
     total_bytes = h * w * c
+    # Use SHA256 to derive a key of the correct length from the user's string
     cipher_key = hashlib.sha256(key_str.encode()).digest()
+    
     if algorithm == 'aes':
+        # AES-128 needs a 16-byte key
         cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=b'01234567')
     elif algorithm == 'des':
+        # DES needs an 8-byte key
         cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=b'0123')
     else: 
-        try:
-            key_val = int(key_str)
-            if not (0 <= key_val <= 255): raise ValueError("XOR key must be 0-255.")
-            return np.full(image_shape, key_val, dtype=np.uint8)
-        except (ValueError, TypeError): raise ValueError("XOR key must be a valid integer.")
+        raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
     
+    # Encrypt a block of null bytes to get the keystream
     keystream_bytes = cipher.encrypt(b'\x00' * total_bytes)
     return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
 
 def process_bitplane_image(image_array, planes_to_process, key_str, algorithm):
-    keystream_image = get_keystream(image_array.shape, key_str, algorithm)
+    """
+    Encrypts or decrypts selected bit-planes of an image.
+    For XOR, it flips the bits (key is not used).
+    For AES/DES, it XORs with a generated keystream.
+    """
     plane_mask = sum(1 << p for p in planes_to_process)
-    masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
-    return cv2.bitwise_xor(image_array, masked_keystream)
+    
+    if algorithm == 'xor':
+        # For XOR, the logic is to simply flip the bits in the selected planes.
+        # The 'key' is effectively the plane mask itself.
+        return cv2.bitwise_xor(image_array, plane_mask)
+    else:
+        # For AES/DES, generate a keystream from the key and mask it to the selected planes.
+        keystream_image = get_keystream(image_array.shape, key_str, algorithm)
+        masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
+        return cv2.bitwise_xor(image_array, masked_keystream)
+# --- MODIFICATION END ---
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
     shape_to_use = image_array.shape
@@ -340,7 +356,6 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 
 # --- START: ENCRYPTION & STEGANOGRAPHY ROUTES ---
 
-# --- MODIFIED: This entire function is replaced with new resizing logic ---
 @app.route('/hide', methods=['POST'])
 def hide():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -440,22 +455,29 @@ def chaotic_encrypt():
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
             'key': final_key, 'details': {'algorithm': algorithm}
         })
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': final_key})
+        
+        download_url = f"/download_image?url={encrypted_url}&filename=encrypted_image.png"
+        return jsonify({'success': True, 'encrypted_image': download_url, 'key': final_key})
+        
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
+# --- MODIFICATION START: Bitplane route fixed ---
 @app.route('/bitplane_encrypt', methods=['POST'])
 def bitplane_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        original_image = read_image_from_request()
+        original_image = read_image_from_request('image')
         planes_str = request.form.get('planes')
         algorithm = request.form.get('algorithm')
         key = request.form.get('key', '').strip()
         
-        if not key:
-            key = str(random.randint(1, 255)) if algorithm == 'xor' else secrets.token_hex(16)
+        if algorithm == 'xor':
+            key = "N/A (key is not used for XOR bit-flipping)"
+        elif not key:
+            # Generate a key for AES/DES if one isn't provided
+            key = secrets.token_hex(16)
         
         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
         encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm)
@@ -468,10 +490,44 @@ def bitplane_encrypt():
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
             'key': key, 'details': {'planes': planes_str, 'algorithm': algorithm}
         })
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+        
+        # Return a proxied download URL to fix the download button
+        download_url = f"/download_image?url={encrypted_url}&filename=bitplane_encrypted.png"
+        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
+        
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
+
+# --- ADDITION START: Add missing decryption route ---
+@app.route('/bitplane_decrypt', methods=['POST'])
+def bitplane_decrypt():
+    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        encrypted_image = read_image_from_request('image')
+        planes_str = request.form.get('planes')
+        algorithm = request.form.get('algorithm')
+        key = request.form.get('key', '').strip()
+
+        if algorithm != 'xor' and not key:
+            return jsonify({'success': False, 'error': 'A decryption key is required for AES/DES.'})
+        
+        planes_to_decrypt = [int(p) for p in planes_str.split(',')]
+        
+        # The same processing function works for decryption
+        decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm)
+
+        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
+
+        # Return a proxied download URL
+        download_url = f"/download_image?url={decrypted_url}&filename=bitplane_decrypted.png"
+        return jsonify({'success': True, 'decrypted_image': download_url})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+# --- ADDITION END ---
+# --- MODIFICATION END ---
 
 @app.route('/neural_network_encrypt', methods=['POST'])
 def neural_network_encrypt():
@@ -594,6 +650,7 @@ def decrypt_from_history(record_id):
                 decrypted_image = apply_pixel_shuffling(encrypted_image, key, algo, decrypt=True)
         elif method == 'Bitplane':
             planes = [int(p) for p in details['planes'].split(',')]
+            # The corrected logic works for history decryption as well
             decrypted_image = process_bitplane_image(encrypted_image, planes, key, details['algorithm'])
         elif method == 'Neural Network':
             decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
@@ -605,7 +662,9 @@ def decrypt_from_history(record_id):
 
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
         
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+        filename = f"decrypted_from_history_{record_id}.png"
+        download_url = f"/download_image?url={decrypted_url}&filename={filename}"
+        return jsonify({'success': True, 'decrypted_image': download_url})
 
     except Exception as e:
         traceback.print_exc()

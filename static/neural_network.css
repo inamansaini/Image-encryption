@@ -5,7 +5,7 @@
     --primary-color: #fff;
     --text-color: #eee;
     --label-color: #d1d1d1;
-    --accent-color: #3772ff;
+    --accent-color: #3772ff; /* Blue color for primary actions */
     --success-color: #10b981;
     --error-color: #f43f5e;
     --glass-bg: rgba(255, 255, 255, 0.05);
@@ -260,8 +260,14 @@ body {
     box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
     transform: translateY(-2px);
 }
-.btn-secondary { background: #9333ea; width: 100%; }
-.btn-secondary:hover { background: #7e22ce; transform: translateY(-2px); }
+
+/* --- MODIFICATION: Changed secondary button to match primary button color --- */
+.btn-secondary { background: var(--accent-color); width: 100%; }
+.btn-secondary:hover {
+    background: #275dce;
+    box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
+    transform: translateY(-2px);
+}
 
 .btn-success { background: var(--success-color); }
 .btn-success:hover { background: #059669; }
