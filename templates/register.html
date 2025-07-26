@@ -26,10 +26,11 @@
         body {
             font-family: 'Poppins', sans-serif;
             display: flex;
+            flex-direction: column; /* Changed to allow footer at bottom */
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 2rem 0;
+            padding: 2rem 1rem; /* Added horizontal padding */
             background: linear-gradient(45deg, #0f0c29, #302b63, #24243e);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
@@ -45,7 +46,7 @@
             width: 100%;
             max-width: 500px;
             padding: 2.5rem;
-            margin: 1rem;
+            margin: 1rem 0; /* Adjusted margin */
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -95,6 +96,10 @@
             font-size: 1rem;
             transition: border-color 0.3s ease;
         }
+        
+        .form-group input[type="password"] {
+            padding-right: 45px;
+        }
 
         .form-group select {
             -webkit-appearance: none;
@@ -127,6 +132,19 @@
             padding: 0 5px;
             color: var(--accent-color);
             z-index: 2;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            color: var(--label-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .toggle-password:hover {
+            color: var(--primary-color);
         }
         
         .checkbox-group-title {
@@ -167,7 +185,7 @@
         .checkbox-item input:checked + .checkmark i {
             transform: scale(1);
         }
-        .checkbox-item .checkbox-label {
+        .checkbox-label {
             color: var(--label-color);
             font-size: 0.9rem;
         }
@@ -201,16 +219,40 @@
             text-align: center;
             border: 1px solid rgba(255, 82, 82, 0.3);
         }
+
+        /* --- New Footer Styles --- */
+        .site-footer {
+            width: 100%;
+            text-align: center;
+            padding: 1rem;
+            margin-top: auto; /* Pushes footer to the bottom */
+        }
+
+        .site-footer p {
+            color: var(--label-color);
+            font-size: 0.85rem;
+        }
+
+        .site-footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: text-decoration 0.2s;
+        }
+
+        .site-footer a:hover {
+            text-decoration: underline;
+        }
         
         @media (max-width: 520px) {
             body {
-                align-items: flex-start;
-                padding: 1rem 0;
+                align-items: stretch; /* Allow container to stretch */
+                padding: 1rem;
             }
 
             .auth-container {
                 padding: 2rem 1.5rem;
-                margin: 0.5rem;
+                margin: 0;
             }
 
             h2 {
@@ -227,6 +269,14 @@
 <body>
     <div class="auth-container">
         <h2><i class="fas fa-user-plus"></i> Register</h2>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-message">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
         
         <form method="POST" action="/register">
             <div class="form-group">
@@ -257,35 +307,42 @@
             <div class="form-group">
                 <input type="password" id="password" name="password" class="form-control" placeholder=" " required>
                 <label for="password">Password*</label>
+                <i class="fas fa-eye toggle-password" id="togglePassword"></i>
             </div>
             
             <div class="form-group">
                 <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder=" " required>
                 <label for="confirm_password">Confirm Password*</label>
+                <i class="fas fa-eye toggle-password" id="toggleConfirmPassword"></i>
             </div>
             
             <div class="checkbox-group">
                 <div class="checkbox-group-title">Why are you using this website? (Select at least 2)*</div>
-                <div class="checkbox-item">
+                
+                <label class="checkbox-item" for="reason1">
                     <input type="checkbox" id="reason1" name="usage_reasons" value="personal_privacy">
                     <span class="checkmark"><i class="fas fa-check"></i></span>
-                    <label for="reason1" class="checkbox-label">Personal privacy</label>
-                </div>
-                <div class="checkbox-item">
+                    <span class="checkbox-label">Personal privacy</span>
+                </label>
+
+                <label class="checkbox-item" for="reason2">
                     <input type="checkbox" id="reason2" name="usage_reasons" value="academic_project">
                     <span class="checkmark"><i class="fas fa-check"></i></span>
-                    <label for="reason2" class="checkbox-label">Academic project</label>
-                </div>
-                 <div class="checkbox-item">
+                    <span class="checkbox-label">Academic project</span>
+                </label>
+                
+                <label class="checkbox-item" for="reason3">
                     <input type="checkbox" id="reason3" name="usage_reasons" value="professional_work">
                     <span class="checkmark"><i class="fas fa-check"></i></span>
-                    <label for="reason3" class="checkbox-label">Professional work</label>
-                </div>
-                <div class="checkbox-item">
+                    <span class="checkbox-label">Professional work</span>
+                </label>
+                
+                <label class="checkbox-item" for="reason4">
                     <input type="checkbox" id="reason4" name="usage_reasons" value="just_for_fun">
                     <span class="checkmark"><i class="fas fa-check"></i></span>
-                    <label for="reason4" class="checkbox-label">Just for fun</label>
-                </div>
+                    <span class="checkbox-label">Just for fun</span>
+                </label>
+
             </div>
             
             <button type="submit" class="btn">Register</button>
@@ -295,5 +352,35 @@
             <p>Already have an account? <a href="/login" style="color: var(--accent-color); text-decoration:none; font-weight: 500;">Login</a></p>
         </div>
     </div>
+
+    <footer class="site-footer">
+        <p>
+            For any query, contact us at: 
+            <a href="mailto:namansaini720@gmail.com">namansaini720@gmail.com</a> | 
+            <a href="tel:+918529685238">+91 8529685238</a>
+        </p>
+    </footer>
+
+    <script>
+        function setupPasswordToggle(toggleId, passwordId) {
+            const toggleButton = document.getElementById(toggleId);
+            const passwordInput = document.getElementById(passwordId);
+
+            if (toggleButton && passwordInput) {
+                toggleButton.addEventListener('click', function() {
+                    // Toggle the type attribute
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    // Toggle the eye icon
+                    this.classList.toggle('fa-eye-slash');
+                });
+            }
+        }
+
+        // Setup for both password fields
+        setupPasswordToggle('togglePassword', 'password');
+        setupPasswordToggle('toggleConfirmPassword', 'confirm_password');
+    </script>
 </body>
 </html>

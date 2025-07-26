@@ -433,3 +433,25 @@ select option {
         width: 100%;
     }
 }
+.site-footer {
+    width: 100%;
+    text-align: center;
+    padding: 1rem;
+    margin-top: 2rem;
+}
+
+.site-footer p {
+    color: var(--label-color);
+    font-size: 0.85rem;
+}
+
+.site-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: text-decoration 0.2s;
+}
+
+.site-footer a:hover {
+    text-decoration: underline;
+}
