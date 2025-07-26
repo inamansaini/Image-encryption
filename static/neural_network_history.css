@@ -42,7 +42,6 @@ body {
     z-index: 1000;
 }
 
-/* --- MODIFIED FOR CONSISTENCY --- */
 .nav a {
     color: var(--label-color);
     text-decoration: none;
@@ -81,7 +80,7 @@ body {
 
 .history-grid { 
     display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); /* Adjusted for 2 images */
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 1.5rem; 
 }
     
@@ -115,7 +114,14 @@ body {
     justify-content: space-around; 
     margin-bottom: 1rem; 
 }
-.image-item { text-align: center; }
+
+.image-item {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .image-item img {
     width: 120px;
     height: 120px;
@@ -150,7 +156,7 @@ body {
     display: inline-block;
     margin-bottom: 0.5rem;
 }
-.key-info span {
+.key-info .key-text {
     display: block;
     word-break: break-all;
 }
@@ -192,6 +198,29 @@ body {
 }
 .copy-key-btn:hover { background: #275dce; }
 
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 15px;
+    background-color: var(--success-color);
+    color: white;
+    text-decoration: none;
+    border: none;
+    border-radius: 5px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.download-btn:hover {
+    background-color: #15803d; /* Darker green on hover */
+    transform: translateY(-2px);
+}
+
 .no-records {
     text-align: center; 
     padding: 4rem 2rem; 
@@ -223,7 +252,7 @@ body {
 .modal {
     display: none; 
     position: fixed; 
-    z-index: 1000; 
+    z-index: 1001; 
     left: 0; 
     top: 0;
     width: 100%; 
@@ -274,7 +303,7 @@ body {
     border-radius: 8px; 
     padding: 16px; 
     position: fixed;
-    z-index: 1001; 
+    z-index: 1002; 
     right: 30px; 
     top: 30px; 
     font-size: 1rem; 
@@ -285,35 +314,41 @@ body {
     visibility: visible; 
     animation: slideIn 0.5s, slideOut 0.5s 2.5s; 
 }
-/* --- Style for the new Download Button --- */
-        .download-btn {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 15px;
-            background-color: #28a745; /* Green background */
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            text-align: center;
-        }
-
-        .download-btn:hover {
-            background-color: #218838; /* Darker green on hover */
-            transform: translateY(-2px); /* Slight lift effect */
-        }
-
-        .download-btn i {
-            margin-right: 8px; /* Space between icon and text */
-        }
-
-        /* Ensures content within the image-item is centered */
-        .image-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
 .toast.success { background: rgba(16, 185, 129, 0.7); }
+
 @keyframes slideIn { from {top: -50px; opacity: 0;} to {top: 30px; opacity: 1;} }
 @keyframes slideOut { from {top: 30px; opacity: 1;} to {top: -50px; opacity: 0;} }
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .container {
+        padding: 1.5rem 1rem;
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    .header p {
+        font-size: 1rem;
+    }
+
+    .history-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .image-gallery {
+        flex-wrap: wrap;
+    }
+    
+    .image-item img {
+        width: 130px;
+        height: 130px;
+    }
+}

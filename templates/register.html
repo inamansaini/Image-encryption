@@ -207,6 +207,28 @@
             text-align: center;
             border: 1px solid rgba(255, 82, 82, 0.3);
         }
+        
+        /* --- RESPONSIVE STYLES ADDED --- */
+        @media (max-width: 520px) {
+            body {
+                align-items: flex-start; /* Align to top for long forms */
+                padding: 1rem 0;
+            }
+
+            .auth-container {
+                padding: 2rem 1.5rem; /* Reduce padding */
+                margin: 0.5rem;       /* Reduce margin */
+            }
+
+            h2 {
+                font-size: 1.8rem;    /* Slightly smaller title */
+                margin-bottom: 1.5rem;
+            }
+
+            .form-group {
+                margin-bottom: 1.25rem; /* Tighter spacing */
+            }
+        }
     </style>
 </head>
 <body>

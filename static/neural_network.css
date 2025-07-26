@@ -238,7 +238,7 @@ body {
 }
 
 /* --- Buttons --- */
-.btn-primary, .btn-success, .copy-btn {
+.btn-primary, .btn-secondary, .btn-success, .copy-btn {
     padding: 14px;
     color: var(--primary-color);
     border: none;
@@ -260,6 +260,8 @@ body {
     box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
     transform: translateY(-2px);
 }
+.btn-secondary { background: #9333ea; width: 100%; }
+.btn-secondary:hover { background: #7e22ce; transform: translateY(-2px); }
 
 .btn-success { background: var(--success-color); }
 .btn-success:hover { background: #059669; }
@@ -270,14 +272,7 @@ body {
 }
 .copy-btn:hover { background-color: var(--accent-color); }
 
-.note { 
-    font-size: 0.85rem; 
-    color: var(--label-color); 
-    text-align: center; 
-    margin-bottom: 1.5rem;
-}
-
-/* --- Result Sections --- */
+/* --- Result & Status Sections --- */
 .hidden { display: none; }
 
 .result-section {
@@ -312,3 +307,50 @@ body {
 }
 .status-success { background-color: rgba(16, 185, 129, 0.2); color: var(--success-color); }
 .status-error { background-color: rgba(244, 63, 94, 0.2); color: var(--error-color); }
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    .nav .nav-links {
+        flex-direction: column;
+        width: 100%;
+    }
+    .nav a {
+        justify-content: center;
+        width: 100%;
+        margin-left: 0 !important; /* Override inline style */
+    }
+
+    .header {
+        padding: 1.5rem 1rem;
+    }
+    .header-content h1 {
+        font-size: 1.8rem;
+        flex-direction: column;
+    }
+
+    .container {
+        grid-template-columns: 1fr;
+        padding: 0 1rem 1rem 1rem;
+    }
+
+    .card, .info-card {
+        padding: 1.5rem;
+    }
+
+    .preview-container {
+        min-height: auto;
+    }
+
+    .preview {
+        width: 100%;
+        height: auto;
+        max-width: 256px;
+        max-height: 256px;
+    }
+}

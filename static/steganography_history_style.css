@@ -29,14 +29,14 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* Adapted for steganography_history.html's nav class */
+/* --- Navigation --- */
 .nav {
     width: 100%; 
     padding: 1rem 2rem; 
     display: flex; 
     justify-content: space-between; 
     align-items: center;
-    background: #0f0c29; /* Changed to solid color */
+    background: #0f0c29;
     border-bottom: 1px solid var(--glass-border);
     position: sticky;
     top: 0;
@@ -50,24 +50,22 @@ body {
     display: inline-flex; 
     align-items: center; 
     gap: 8px;
-    padding: 0.5rem 1rem; /* ADDED THIS LINE FOR A PERFECT MATCH */
-    border-radius: 8px;    /* Added for consistency on potential hover effects */
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
 }
 .nav a:hover { 
     color: var(--primary-color); 
-    background: var(--glass-bg); /* Added for consistency */
+    background: var(--glass-bg);
 }
 
-/* ... rest of css2 ... */
-/* Adapted for steganography_history.html's container class */
+/* --- Container & Header --- */
 .container { 
     width: 100%; 
-    max-width: 1600px; /* Increased max-width for potentially wider cards */
+    max-width: 1600px;
     padding: 2rem; 
     margin: 0 auto; 
 }
 
-/* Adapted for steganography_history.html's header class */
 .header { 
     text-align: center; 
     margin-bottom: 2rem; 
@@ -80,11 +78,10 @@ body {
     color: var(--label-color); 
 }
 
-/* --- Card Grid and Content (Copied from reference) --- */
-
+/* --- History Grid --- */
 .history-grid { 
     display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); /* Wider min-width for 3 images */
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
     gap: 1.5rem; 
 }
  
@@ -120,8 +117,8 @@ body {
 }
 .image-item { text-align: center; }
 .image-item img {
-    width: 120px; /* Fixed width to match reference */
-    height: 120px; /* Fixed height to match reference */
+    width: 120px;
+    height: 120px;
     object-fit: cover; 
     border-radius: 10px;
     border: 1px solid var(--glass-border); 
@@ -158,6 +155,7 @@ body {
     word-break: break-all;
 }
 
+/* --- Buttons --- */
 .delete-btn {
     position: absolute; 
     top: 1.25rem; 
@@ -184,8 +182,8 @@ body {
     color: white;
     border: none; 
     border-radius: 6px; 
-    width: 30px; /* Icon-only button */
-    height: 30px; /* Icon-only button */
+    width: 30px;
+    height: 30px;
     cursor: pointer; 
     font-size: 0.9em;
     transition: all .3s ease;
@@ -195,6 +193,7 @@ body {
 }
 .copy-key-btn:hover { background: #275dce; }
 
+/* --- Fallback Content --- */
 .no-records {
     text-align: center; 
     padding: 4rem 2rem; 
@@ -223,12 +222,11 @@ body {
 }
 .action-btn:hover { background: #275dce; }
 
-/* --- Modal & Toast (Copied from reference) --- */
-
+/* --- Modal & Toast --- */
 .modal {
     display: none; 
     position: fixed; 
-    z-index: 1000; 
+    z-index: 1001; 
     left: 0; 
     top: 0;
     width: 100%; 
@@ -279,7 +277,7 @@ body {
     border-radius: 8px; 
     padding: 16px; 
     position: fixed;
-    z-index: 1001; 
+    z-index: 1002; 
     right: 30px; 
     top: 30px; 
     font-size: 1rem; 
@@ -295,3 +293,58 @@ body {
  
 @keyframes slideIn { from {top: -50px; opacity: 0;} to {top: 30px; opacity: 1;} }
 @keyframes slideOut { from {top: 30px; opacity: 1;} to {top: -50px; opacity: 0;} }
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    .header p {
+        font-size: 1rem;
+    }
+
+    .history-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .image-gallery {
+        flex-wrap: wrap;
+    }
+    
+    .image-item img {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .history-card h3 {
+        font-size: 1rem;
+    }
+
+    .image-gallery {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    
+    .image-item img {
+        width: 150px;
+        height: 150px;
+    }
+
+    .key-info {
+        font-size: 0.8rem;
+    }
+}

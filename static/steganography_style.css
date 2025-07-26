@@ -1,6 +1,6 @@
 /*
  * Aurora Glass Theme for Image Steganography Pro
- * Version: 2.6 (History Page Update)
+ * Version: 2.7 (Responsive Update)
  */
 
 /* --- CSS Variables --- */
@@ -291,42 +291,84 @@ body {
     flex-wrap: wrap;
 }
 
-/* --- Responsive Stacking for Inputs --- */
+/* --- Info Card --- */
+.info-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    color: #eee;
+    grid-column: 1 / -1; /* This makes it span full width in a grid */
+}
+.info-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+.info-card p {
+    color: var(--label-color);
+    line-height: 1.7;
+}
+
+/* --- RESPONSIVE STYLES FOR MOBILE --- */
 @media (max-width: 768px) {
+    /* --- Layout --- */
+    .container, .main-container {
+        padding: 1rem;
+    }
+
+    /* --- Navigation --- */
+    .nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        height: auto;
+        min-height: 0;
+    }
+    
+    .nav-links {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 0.5rem;
+    }
+    
+    .nav a {
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* --- Header --- */
+    .header {
+        padding: 1.5rem 1rem;
+    }
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    .header p {
+        font-size: 1rem;
+    }
+    
+    /* --- Cards --- */
+    .card {
+        padding: 1.5rem;
+    }
+    .card h2 {
+        font-size: 1.5rem;
+    }
+
+    /* --- Forms --- */
     .form-grid {
         grid-template-columns: 1fr;
     }
-    .nav {
+
+    /* --- Action Buttons --- */
+    .key-actions {
         flex-direction: column;
-        gap: 0.5rem;
-        min-height: 0; /* Let height be auto in column layout */
-        height: auto;
     }
 }
-.info-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 1.5rem;
-            margin-top: 2rem;
-            width: 100%;
-            animation: fadeIn 1s ease-out;
-            color: #eee;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .info-card h3 {
-            color: #3772ff;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-        }
-        .info-card p {
-            color: #d1d1d1;
-            line-height: 1.7;
-        }

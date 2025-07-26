@@ -111,7 +111,7 @@
             color: var(--accent-color);
         }
         
-        /* NEW: Styles for the eye icon */
+        /* Styles for the eye icon */
         .toggle-password {
             position: absolute;
             top: 50%;
@@ -172,6 +172,19 @@
             text-align: center;
             border: 1px solid rgba(255, 82, 82, 0.3);
         }
+
+        /* --- RESPONSIVE STYLES ADDED --- */
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 2.5rem 1.5rem; /* Reduce padding for smaller screens */
+                margin: 0.5rem;         /* Reduce margin to fit better */
+            }
+
+            .auth-header h2 {
+                font-size: 1.8rem;      /* Make the title slightly smaller */
+            }
+        }
+
     </style>
 </head>
 <body>

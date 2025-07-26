@@ -72,7 +72,7 @@ body {
 }
 
 .image-gallery { display: flex; gap: 1rem; justify-content: space-around; margin-bottom: 1rem; }
-.image-item { text-align: center; }
+.image-item { text-align: center; position: relative; } /* Added position relative */
 .image-item img {
     width: 120px; height: 120px; object-fit: cover; border-radius: 10px;
     border: 1px solid var(--glass-border); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -80,12 +80,35 @@ body {
 .image-item img:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
 .image-item p { font-size: 0.9em; color: var(--label-color); margin-top: 0.5rem; }
 
+/* Download button inside image item */
+.image-item .download-btn {
+    position: absolute;
+    bottom: 2.5rem; /* Position over the image */
+    right: 5px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.image-item:hover .download-btn {
+    opacity: 1;
+}
+
 .key-info {
     background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px;
     font-family: 'Courier New', monospace; word-wrap: break-word; font-size: 0.9rem;
     position: relative; line-height: 1.6;
 }
 .key-info strong { color: var(--label-color); }
+.key-info span { display: block; word-break: break-all; }
 
 .delete-btn {
     position: absolute; top: 1.25rem; right: 1.25rem; background: var(--danger-color); color: white;
@@ -97,8 +120,8 @@ body {
 
 .copy-key-btn {
     position: absolute; top: 0.75rem; right: 0.75rem; background: var(--accent-color); color: white;
-    border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 0.8em;
-    transition: all .3s ease;
+    border: none; border-radius: 6px; width: 30px; height: 30px; cursor: pointer; font-size: 0.8em;
+    transition: all .3s ease; display: flex; align-items: center; justify-content: center;
 }
 .copy-key-btn:hover { background: #275dce; }
 
@@ -115,9 +138,9 @@ body {
 .action-btn:hover { background: #275dce; }
 
 .modal {
-    display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+    display: none; position: fixed; z-index: 1001; left: 0; top: 0;
     width: 100%; height: 100%; background-color: rgba(0,0,0,0.9);
-    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
     animation: fadeInModal 0.3s ease;
 }
 @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
@@ -128,19 +151,44 @@ body {
 .modal-content img { width: 100%; height: auto; border-radius: 10px; }
 .close {
     position: absolute; top: 15px; right: 35px; color: #f1f1f1;
-    font-size: 40px; font-weight: bold; transition: 0.3s;
+    font-size: 40px; font-weight: bold; transition: 0.3s; cursor: pointer;
 }
-.close:hover, .close:focus { color: #bbb; text-decoration: none; cursor: pointer; }
+.close:hover, .close:focus { color: #bbb; text-decoration: none; }
 
 .toast {
     visibility: hidden; min-width: 250px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
     color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed;
-    z-index: 1001; right: 30px; top: 30px; font-size: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 1002; right: 30px; top: 30px; font-size: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     border: 1px solid var(--glass-border);
 }
 .toast.show { visibility: visible; animation: slideIn 0.5s, slideOut 0.5s 2.5s; }
-.toast.success { background: rgba(16, 185, 129, 0.5); }
-.toast.error { background: rgba(244, 63, 94, 0.5); }
+.toast.success { background: rgba(16, 185, 129, 0.7); }
+.toast.error { background: rgba(244, 63, 94, 0.7); }
 
 @keyframes slideIn { from {top: -50px; opacity: 0;} to {top: 30px; opacity: 1;} }
 @keyframes slideOut { from {top: 30px; opacity: 1;} to {top: -50px; opacity: 0;} }
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .main-container {
+        padding: 1rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.8rem;
+    }
+    .page-header p {
+        font-size: 1rem;
+    }
+
+    .history-grid {
+        grid-template-columns: 1fr;
+    }
+}
