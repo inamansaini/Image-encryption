@@ -17,10 +17,10 @@
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
             --glass-hover-bg: rgba(255, 255, 255, 0.1);
-            --warning-bg: rgba(255, 193, 7, 0.1);
-            --warning-border: rgba(255, 193, 7, 0.3);
-            --warning-text: #ffeaa7;
-            --warning-icon: #ffc107;
+            --info-bg: rgba(55, 114, 255, 0.1);
+            --info-border: rgba(55, 114, 255, 0.3);
+            --info-text: #cddcff;
+            --info-icon: var(--accent-color);
         }
 
         * {
@@ -103,47 +103,50 @@
             color: var(--label-color);
         }
         
-        .recommendation-box {
+        .info-box {
             width: 100%;
             max-width: 860px;
             padding: 1rem 1.5rem;
             margin-bottom: 3rem;
-            background: var(--warning-bg);
-            border: 1px solid var(--warning-border);
+            background: var(--info-bg);
+            border: 1px solid var(--info-border);
             border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 1.25rem;
             animation: fadeInDown 0.8s ease-out 0.2s backwards;
         }
 
-        .recommendation-box i {
-            font-size: 1.5rem;
-            color: var(--warning-icon);
+        .info-box i {
+            font-size: 1.6rem;
+            color: var(--info-icon);
             flex-shrink: 0;
         }
 
-        .recommendation-box p {
+        .info-box p {
             margin: 0;
-            color: var(--warning-text);
+            color: var(--info-text);
             line-height: 1.6;
             font-size: 0.95rem;
         }
 
-        .recommendation-box strong {
+        .info-box strong {
             color: var(--primary-color);
             font-weight: 500;
         }
 
+        /* --- Updated Method Container --- */
         .method-container {
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: center; /* This is key for centering the rows */
             gap: 2rem;
+            width: 100%;
+            max-width: 1200px; /* Controls the overall width */
         }
         
         .method-card {
-            width: 320px;
+            width: 340px; /* A fixed width for cards */
             padding: 2rem;
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -157,10 +160,10 @@
         }
 
         .method-card:nth-child(1) { animation-delay: 0.2s; }
-        .method-card:nth-child(2) { animation-delay: 0.4s; }
-        .method-card:nth-child(3) { animation-delay: 0.6s; }
-        .method-card:nth-child(4) { animation-delay: 0.8s; } 
-        .method-card:nth-child(5) { animation-delay: 1.0s; }
+        .method-card:nth-child(2) { animation-delay: 0.3s; }
+        .method-card:nth-child(3) { animation-delay: 0.4s; }
+        .method-card:nth-child(4) { animation-delay: 0.5s; } 
+        .method-card:nth-child(5) { animation-delay: 0.6s; }
 
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
@@ -229,6 +232,7 @@
             display: inline-block;
         }
 
+        /* --- Responsive Adjustments --- */
         @media (max-width: 768px) {
             .top-nav {
                 padding: 1rem;
@@ -237,42 +241,32 @@
             .main-container {
                 padding: 2rem 1rem;
             }
-
-            .page-header {
-                margin-bottom: 1.5rem;
-            }
             
             .page-header h1 {
                 font-size: 2rem;
             }
 
-            .page-header p {
-                font-size: 1rem;
-            }
-
-            .recommendation-box {
+            .info-box {
                 margin-bottom: 2rem;
-                padding: 1rem;
+                flex-direction: column;
+                text-align: center;
+                gap: 0.75rem;
             }
 
             .method-container {
-                flex-direction: column;
+                flex-direction: column; /* Stack cards vertically on mobile */
                 align-items: center;
                 gap: 1.5rem;
             }
 
             .method-card {
-                width: 95%;
+                width: 95%; /* Make cards fluid on mobile */
                 max-width: 400px;
                 padding: 1.5rem;
             }
 
             .method-card h2 {
                 font-size: 1.3rem;
-            }
-
-            .method-icon i {
-                font-size: 3rem;
             }
 
             .method-description {
@@ -296,10 +290,10 @@
             <p>Select a secure technique to protect your images</p>
         </div>
 
-        <div class="recommendation-box">
-            <i class="fas fa-exclamation-triangle"></i>
+        <div class="info-box">
+            <i class="fas fa-lightbulb"></i>
             <p>
-                <strong>Recommendation:</strong> For your privacy and security, please avoid using personal or sensitive images. This tool is intended for educational and experimental purposes.
+                <strong>Quick Tip:</strong> This tool is designed for educational purposes. To protect your privacy, we recommend avoiding personal or sensitive images.
             </p>
         </div>
 
@@ -344,9 +338,7 @@
                 </p>
                 <div class="status-label">Coming Soon</div>
             </div>
-
         </div>
     </main>
-
 </body>
 </html>
