@@ -130,6 +130,12 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* FIX: Added keyframe for disabled card animation */
+        @keyframes fadeInUpDisabled {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 0.5; transform: translateY(0); }
+        }
         
         .method-card:hover {
             transform: translateY(-10px);
@@ -163,9 +169,11 @@
 
         /* --- STYLES FOR DISABLED CARD --- */
         .method-card.disabled {
-            opacity: 0.5;
+            /* FIX: Removed opacity: 0.5; to allow animation to control opacity */
             cursor: not-allowed;
             position: relative;
+            /* FIX: Use the dedicated animation for the disabled card */
+            animation-name: fadeInUpDisabled;
         }
 
         .method-card.disabled:hover {
