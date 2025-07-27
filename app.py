@@ -205,30 +205,47 @@ def apply_arnold_cat_map(image_array, iterations=10, decrypt=False):
         current_img = current_img[src_y, src_x]
     return current_img[0:h, 0:w]
 
-def get_keystream(image_shape, key_str, algorithm):
+def get_keystream(image_shape, key_str, algorithm, nonce):
     h, w, c = image_shape
     total_bytes = h * w * c
     cipher_key = hashlib.sha256(key_str.encode()).digest()
     
     if algorithm == 'aes':
-        cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=b'01234567')
+        cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=nonce)
     elif algorithm == 'des':
-        cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=b'0123')
+        # DES nonce for CTR mode is typically 7 bytes or less
+        cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=nonce[:7])
     else: 
         raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
     
     keystream_bytes = cipher.encrypt(b'\x00' * total_bytes)
     return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
 
-def process_bitplane_image(image_array, planes_to_process, key_str, algorithm):
+def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, nonce):
+    """
+    Encrypts or decrypts an image by applying a key-based XOR operation
+    to specified bit planes, using a nonce to ensure unique encryption each time.
+    This function is its own inverse *only if the same nonce is used*.
+    """
     plane_mask = sum(1 << p for p in planes_to_process)
     
+    keystream_image = None
     if algorithm == 'xor':
-        return cv2.bitwise_xor(image_array, plane_mask)
+        # Incorporate the nonce into the seed to make each encryption unique
+        h, w, c = image_array.shape
+        total_bytes = h * w * c
+        seed = hashlib.sha256(key_str.encode() + nonce).digest()
+        keystream_bytes = (seed * (total_bytes // len(seed) + 1))[:total_bytes]
+        keystream_image = np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_array.shape)
     else:
-        keystream_image = get_keystream(image_array.shape, key_str, algorithm)
-        masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
-        return cv2.bitwise_xor(image_array, masked_keystream)
+        # Pass the nonce to the keystream generator for AES/DES
+        keystream_image = get_keystream(image_array.shape, key_str, algorithm, nonce)
+    
+    # Apply the keystream only to the selected bit planes
+    masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
+    
+    # Encrypt/Decrypt by XORing the image with the masked keystream
+    return cv2.bitwise_xor(image_array, masked_keystream)
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
     shape_to_use = image_array.shape
@@ -413,13 +430,17 @@ def bitplane_encrypt():
         algorithm = request.form.get('algorithm')
         key = request.form.get('key', '').strip()
         
-        if algorithm == 'xor':
-            key = "N/A (key is not used for XOR bit-flipping)"
-        elif not key:
+        if not key:
             key = secrets.token_hex(16)
         
+        # Generate a unique nonce for each encryption to prevent replay/symmetric issues
+        nonce = secrets.token_bytes(8)
+
         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
-        encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm)
+        encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm, nonce)
+
+        # The key returned to the user and stored in history now includes the nonce
+        composite_key = f"{key}:{nonce.hex()}"
 
         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(encrypted_image)
@@ -427,11 +448,12 @@ def bitplane_encrypt():
         add_history_record(session['user_id'], 'Bitplane', {
             'original_url': original_url, 'original_public_id': original_pid,
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
-            'key': key, 'details': {'planes': planes_str, 'algorithm': algorithm}
+            'key': composite_key, 
+            'details': {'planes': planes_str, 'algorithm': algorithm}
         })
         
         download_url = f"/download_image?url={encrypted_url}&filename=bitplane_encrypted.png"
-        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
+        return jsonify({'success': True, 'encrypted_image': download_url, 'key': composite_key})
         
     except Exception as e:
         traceback.print_exc()
@@ -444,14 +466,23 @@ def bitplane_decrypt():
         encrypted_image = read_image_from_request('image')
         planes_str = request.form.get('planes')
         algorithm = request.form.get('algorithm')
-        key = request.form.get('key', '').strip()
+        composite_key = request.form.get('key', '').strip()
 
-        if algorithm != 'xor' and not key:
-            return jsonify({'success': False, 'error': 'A decryption key is required for AES/DES.'})
-        
+        if not composite_key:
+            return jsonify({'success': False, 'error': 'A decryption key is required.'})
+
+        try:
+            # The key must now be parsed to separate the secret key and the nonce
+            key, nonce_hex = composite_key.rsplit(':', 1)
+            nonce = bytes.fromhex(nonce_hex)
+            if len(nonce) != 8:
+                raise ValueError("Invalid nonce format in key.")
+        except (ValueError, IndexError):
+            return jsonify({'success': False, 'error': 'Invalid key format. The key must be in the format `key:nonce`.'})
+
         planes_to_decrypt = [int(p) for p in planes_str.split(',')]
         
-        decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm)
+        decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm, nonce)
 
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
 
@@ -467,7 +498,9 @@ def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
         original_image = read_and_resize_image()
-        key = request.form.get('key', '').strip() or secrets.token_hex(16)
+        # FIX: Always generate a new key for encryption to prevent accidental decryption.
+        # This ignores any key provided in the form on the encryption page.
+        key = secrets.token_hex(16)
         
         encrypted_image = process_nn_image_cipher(original_image, key)
 
@@ -576,8 +609,17 @@ def decrypt_from_history(record_id):
             else:
                 decrypted_image = apply_pixel_shuffling(encrypted_image, key, algo, decrypt=True)
         elif method == 'Bitplane':
+            try:
+                # The key stored in history is the composite key (key:nonce)
+                secret_key, nonce_hex = key.rsplit(':', 1)
+                nonce = bytes.fromhex(nonce_hex)
+                if len(nonce) != 8:
+                    raise ValueError("Invalid nonce format in stored key.")
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'error': 'Cannot decrypt: The key format for this record is outdated.'})
+            
             planes = [int(p) for p in details['planes'].split(',')]
-            decrypted_image = process_bitplane_image(encrypted_image, planes, key, details['algorithm'])
+            decrypted_image = process_bitplane_image(encrypted_image, planes, secret_key, details['algorithm'], nonce)
         elif method == 'Neural Network':
             decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
         elif method == 'DNA Based':

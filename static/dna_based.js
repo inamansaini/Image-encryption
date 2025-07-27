@@ -91,31 +91,31 @@ async function handleFormSubmit(url, formData, resultArea, button, isEncrypt) {
 
             if (isEncrypt) {
                 content = `
-                    <h4><i class="fas fa-check-circle"></i> Encryption Successful!</h4>
-                    <div class="key-container">
-                        <p><strong>Your Key:</strong></p>
-                        <div class="key-display-wrapper">
-                            <span id="encryptionKeyText" class="key-display">${data.key}</span>
-                            <button type="button" id="copyKeyBtn" class="btn-copy-key" title="Copy key">
-                                <i class="fas fa-copy"></i>
-                            </button>
+                        <h4><i class="fas fa-check-circle"></i> Encryption Successful!</h4>
+                        <div class="key-container">
+                            <p><strong>Your Key:</strong></p>
+                            <div class="key-display-wrapper">
+                                <span id="encryptionKeyText" class="key-display">${data.key}</span>
+                                <button type="button" id="copyKeyBtn" class="btn-copy-key" title="Copy key">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="result-image-container">
-                        <img src="${data.encrypted_image}${cacheBuster}" alt="Encrypted Image" class="result-image">
-                    </div>
-                    <a href="${data.encrypted_image}" download="encrypted_dna_${Date.now()}.png" class="btn-download">
-                        <i class="fas fa-download"></i> Download Encrypted Image
-                    </a>`;
+                        <div class="result-image-container">
+                            <img src="${data.encrypted_image}${cacheBuster}" alt="Encrypted Image" class="result-image">
+                        </div>
+                        <a href="${data.encrypted_image}" download="encrypted_dna_${Date.now()}.png" class="btn-download">
+                            <i class="fas fa-download"></i> Download Encrypted Image
+                        </a>`;
             } else {
                 content = `
-                    <h4><i class="fas fa-check-circle"></i> Decryption Successful!</h4>
-                    <div class="result-image-container">
-                        <img src="${data.decrypted_image}${cacheBuster}" alt="Decrypted Image" class="result-image">
-                    </div>
-                    <a href="${data.decrypted_image}" download="decrypted_dna_${Date.now()}.png" class="btn-download">
-                        <i class="fas fa-download"></i> Download Decrypted Image
-                    </a>`;
+                        <h4><i class="fas fa-check-circle"></i> Decryption Successful!</h4>
+                        <div class="result-image-container">
+                            <img src="${data.decrypted_image}${cacheBuster}" alt="Decrypted Image" class="result-image">
+                        </div>
+                        <a href="${data.decrypted_image}" download="decrypted_dna_${Date.now()}.png" class="btn-download">
+                            <i class="fas fa-download"></i> Download Decrypted Image
+                        </a>`;
             }
             resultArea.innerHTML = content;
 
@@ -125,10 +125,9 @@ async function handleFormSubmit(url, formData, resultArea, button, isEncrypt) {
                 
                 if (copyBtn && keyText) {
                     copyBtn.addEventListener('click', () => {
-                        if (copyBtn.classList.contains('copied')) return; // Prevent multiple clicks
+                        if (copyBtn.classList.contains('copied')) return;
 
                         navigator.clipboard.writeText(keyText.innerText).then(() => {
-                            // **MODIFICATION: Use CSS class for feedback**
                             const originalIcon = copyBtn.innerHTML;
                             copyBtn.classList.add('copied');
                             copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied';
