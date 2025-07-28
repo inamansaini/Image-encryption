@@ -498,9 +498,8 @@ def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
         original_image = read_and_resize_image()
-        # FIX: Always generate a new key for encryption to prevent accidental decryption.
-        # This ignores any key provided in the form on the encryption page.
-        key = secrets.token_hex(16)
+        # Use the provided key if it exists, otherwise generate a new one.
+        key = request.form.get('key', '').strip() or secrets.token_hex(16)
         
         encrypted_image = process_nn_image_cipher(original_image, key)
 
