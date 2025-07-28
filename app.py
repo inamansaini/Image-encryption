@@ -10,6 +10,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import traceback
 import hashlib
+import base64
+import binascii
 from Crypto.Cipher import AES, DES
 import secrets
 import math
@@ -142,8 +144,26 @@ def data_to_binary(data):
     elif isinstance(data, (int, np.uint8)): return format(data, "08b")
     else: raise TypeError("Type not supported for binary conversion")
     
-def reveal_data_lsb(stego_image, key):
-    cipher_suite = Fernet(key.encode('utf-8'))
+def reveal_data_lsb(stego_image, key_from_user):
+    fernet_key_bytes = None
+    try:
+        # A valid Fernet key is a 32-byte URL-safe base64-encoded string.
+        # We test if the provided key matches this format.
+        decoded_key = base64.urlsafe_b64decode(key_from_user.encode('utf-8'))
+        if len(decoded_key) == 32:
+            # It seems to be a valid, auto-generated key.
+            fernet_key_bytes = key_from_user.encode('utf-8')
+        else:
+            # It's a valid base64 string, but not the right length for Fernet.
+            # Treat it as a custom key that needs hashing.
+            raise ValueError("Not a 32-byte key, treat as custom.")
+    except (ValueError, binascii.Error, TypeError):
+        # If any decoding error occurs, it's a custom key.
+        # Derive the actual encryption key from it, matching the /hide logic.
+        hashed_key = hashlib.sha256(key_from_user.encode()).digest()
+        fernet_key_bytes = base64.urlsafe_b64encode(hashed_key)
+
+    cipher_suite = Fernet(fernet_key_bytes)
     binary_data = ""
     delimiter = data_to_binary(b'!!STEGO_END!!')
     flat_pixels = stego_image.ravel()
@@ -327,14 +347,26 @@ def hide():
 
         secret_image = read_image_from_request('secret')
         
-        encryption_key = Fernet.generate_key()
+        user_key = request.form.get('key', '').strip()
         
+        if user_key:
+            # User provided a custom key.
+            key_to_return = user_key
+            # The key for Fernet must be derived from the user's custom key.
+            hashed_key = hashlib.sha256(user_key.encode()).digest()
+            key_for_fernet = base64.urlsafe_b64encode(hashed_key)
+        else:
+            # User did not provide a key, so we generate one.
+            key_for_fernet = Fernet.generate_key()
+            # This new generated key is what the user needs to see and use.
+            key_to_return = key_for_fernet.decode('utf-8')
+
         while True:
             is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
             if not is_success:
                 return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
 
-            encrypted_secret_data = Fernet(encryption_key).encrypt(secret_data_encoded.tobytes())
+            encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
             data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
             payload_bits = len(data_to_hide) * 8
 
@@ -357,7 +389,7 @@ def hide():
             flat_pixels[i] = (flat_pixels[i] & 0xFE) | int(binary_secret_data[i])
         
         stego_image = flat_pixels.reshape(cover_image.shape)
-        key = encryption_key.decode('utf-8')
+        key = key_to_return
         
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
         secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)

@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const coverImage = document.getElementById('coverImage');
     const secretImage = document.getElementById('secretImage');
+    const customKeyInput = document.getElementById('customKeyInput');
     const hiddenImageUpload = document.getElementById('hiddenImageUpload');
     const coverPreview = document.getElementById('coverPreview');
     const secretPreview = document.getElementById('secretPreview');
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hideBtn.addEventListener('click', async function() {
             const coverFile = coverImage?.files[0];
             const secretFile = secretImage?.files[0];
+            const customKey = customKeyInput?.value.trim();
             
             if (resultSection) resultSection.classList.add('hidden');
             if (coverImage) coverImage.classList.remove('error-border');
@@ -74,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formData = new FormData();
                 formData.append('cover', coverFile);
                 formData.append('secret', secretFile);
+                formData.append('key', customKey);
 
                 const response = await fetch('/hide', {
                     method: 'POST',
