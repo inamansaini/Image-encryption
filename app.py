@@ -213,7 +213,6 @@ def get_keystream(image_shape, key_str, algorithm, nonce):
     if algorithm == 'aes':
         cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=nonce)
     elif algorithm == 'des':
-        # DES nonce for CTR mode is typically 7 bytes or less
         cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=nonce[:7])
     else: 
         raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
@@ -222,29 +221,20 @@ def get_keystream(image_shape, key_str, algorithm, nonce):
     return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
 
 def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, nonce):
-    """
-    Encrypts or decrypts an image by applying a key-based XOR operation
-    to specified bit planes, using a nonce to ensure unique encryption each time.
-    This function is its own inverse *only if the same nonce is used*.
-    """
     plane_mask = sum(1 << p for p in planes_to_process)
     
     keystream_image = None
     if algorithm == 'xor':
-        # Incorporate the nonce into the seed to make each encryption unique
         h, w, c = image_array.shape
         total_bytes = h * w * c
         seed = hashlib.sha256(key_str.encode() + nonce).digest()
         keystream_bytes = (seed * (total_bytes // len(seed) + 1))[:total_bytes]
         keystream_image = np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_array.shape)
     else:
-        # Pass the nonce to the keystream generator for AES/DES
         keystream_image = get_keystream(image_array.shape, key_str, algorithm, nonce)
     
-    # Apply the keystream only to the selected bit planes
     masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
     
-    # Encrypt/Decrypt by XORing the image with the masked keystream
     return cv2.bitwise_xor(image_array, masked_keystream)
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
@@ -433,13 +423,12 @@ def bitplane_encrypt():
         if not key:
             key = secrets.token_hex(16)
         
-        # Generate a unique nonce for each encryption to prevent replay/symmetric issues
+        
         nonce = secrets.token_bytes(8)
 
         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
         encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm, nonce)
 
-        # The key returned to the user and stored in history now includes the nonce
         composite_key = f"{key}:{nonce.hex()}"
 
         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
@@ -472,7 +461,6 @@ def bitplane_decrypt():
             return jsonify({'success': False, 'error': 'A decryption key is required.'})
 
         try:
-            # The key must now be parsed to separate the secret key and the nonce
             key, nonce_hex = composite_key.rsplit(':', 1)
             nonce = bytes.fromhex(nonce_hex)
             if len(nonce) != 8:
@@ -498,7 +486,7 @@ def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
         original_image = read_and_resize_image()
-        # Use the provided key if it exists, otherwise generate a new one.
+        
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
         
         encrypted_image = process_nn_image_cipher(original_image, key)
@@ -581,7 +569,7 @@ def decrypt():
     except Exception as e:
         traceback.print_exc()
         if "Incorrect padding" in str(e) or "Invalid token" in str(e):
-                 return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
+             return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
         return jsonify({'success': False, 'error': f'An error occurred: {e}'})
 
 
@@ -609,7 +597,6 @@ def decrypt_from_history(record_id):
                 decrypted_image = apply_pixel_shuffling(encrypted_image, key, algo, decrypt=True)
         elif method == 'Bitplane':
             try:
-                # The key stored in history is the composite key (key:nonce)
                 secret_key, nonce_hex = key.rsplit(':', 1)
                 nonce = bytes.fromhex(nonce_hex)
                 if len(nonce) != 8:
