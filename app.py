@@ -334,68 +334,69 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 def hide():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        cover_image = read_image_from_request('cover')
-        MAX_PIXELS = 3400000
-        h, w, _ = cover_image.shape
-        if h * w > MAX_PIXELS:
-            scale = math.sqrt(MAX_PIXELS / (h * w))
-            new_w, new_h = int(w * scale), int(h * scale)
-            cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-            print(f"Steganography: Cover image resized to {new_w}x{new_h} to meet size limits.")
-
-        cover_capacity_bits = cover_image.shape[0] * cover_image.shape[1] * 3
-
+        # Step 1: Read the secret image first. Its quality will be preserved.
         secret_image = read_image_from_request('secret')
-        
+
+        # Step 2: Determine the key for encryption.
         user_key = request.form.get('key', '').strip()
-        
         if user_key:
-            # User provided a custom key.
             key_to_return = user_key
-            # The key for Fernet must be derived from the user's custom key.
             hashed_key = hashlib.sha256(user_key.encode()).digest()
             key_for_fernet = base64.urlsafe_b64encode(hashed_key)
         else:
-            # User did not provide a key, so we generate one.
             key_for_fernet = Fernet.generate_key()
-            # This new generated key is what the user needs to see and use.
             key_to_return = key_for_fernet.decode('utf-8')
-        
-        # FIX: The resizing loop for the secret image is removed.
-        # Instead, we check capacity once and fail if it's insufficient.
-        # This preserves the secret image's quality (Issue #2) and avoids
-        # errors from malformed, tiny images (Issue #1).
 
-        # Encode the secret image losslessly to PNG format in memory.
+        # Step 3: Calculate the exact payload size from the unaltered secret image.
         is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
         if not is_success:
-            return jsonify({'success': False, 'error': 'Failed to encode secret image into PNG format.'})
-
-        # Encrypt the data and add a delimiter.
+            return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
+        
         encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
         data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
         payload_bits = len(data_to_hide) * 8
 
-        # Check if the cover image has enough space.
-        if payload_bits > cover_capacity_bits:
-            error_message = (
-                f"The secret image is too large for the cover image. "
-                f"Required capacity: {payload_bits // 8} bytes; "
-                f"Available capacity: {cover_capacity_bits // 8} bytes. "
-                "Please use a larger cover image or a smaller secret image."
-            )
-            return jsonify({'success': False, 'error': error_message})
+        # Step 4: Read the cover image.
+        cover_image = read_image_from_request('cover')
+        h, w, _ = cover_image.shape
+        cover_capacity_bits = h * w * 3
 
-        # If we get here, the data fits. Proceed with embedding.
+        # Step 5: If cover image is too small, upscale it to fit the secret data.
+        # This solves both the capacity and quality issues simultaneously.
+        if payload_bits > cover_capacity_bits:
+            print(f"Cover image is too small. Required bits: {payload_bits}, Available bits: {cover_capacity_bits}.")
+            
+            # Calculate the number of pixels required to hold the data.
+            required_pixels = math.ceil(payload_bits / 3)
+            current_pixels = h * w
+            
+            # Determine the scaling factor needed to reach the required pixel count.
+            scale_factor = math.sqrt(required_pixels / current_pixels)
+            
+            # Calculate new dimensions for the cover image, preserving its aspect ratio.
+            new_w = math.ceil(w * scale_factor)
+            new_h = math.ceil(h * scale_factor)
+            
+            print(f"Upscaling cover image from {w}x{h} to {new_w}x{new_h} to fit secret data.")
+            
+            # Resize the cover image using an interpolation method suitable for upscaling.
+            cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+        # Step 6: Embed the unaltered secret data into the (now sufficiently large) cover image.
         binary_secret_data = data_to_binary(data_to_hide)
         flat_pixels = cover_image.ravel()
+
+        # Final safety check to ensure capacity is sufficient after resize.
+        if payload_bits > len(flat_pixels):
+             return jsonify({'success': False, 'error': 'Capacity calculation error after resizing. Please try again.'})
+
         for i in range(payload_bits):
             flat_pixels[i] = (flat_pixels[i] & 0xFE) | int(binary_secret_data[i])
         
         stego_image = flat_pixels.reshape(cover_image.shape)
         key = key_to_return
         
-        # Upload original (unaltered) secret image to history.
+        # Step 7: Upload assets. The secret image is the original, unaltered one.
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
         secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
