@@ -147,19 +147,12 @@ def data_to_binary(data):
 def reveal_data_lsb(stego_image, key_from_user):
     fernet_key_bytes = None
     try:
-        # A valid Fernet key is a 32-byte URL-safe base64-encoded string.
-        # We test if the provided key matches this format.
         decoded_key = base64.urlsafe_b64decode(key_from_user.encode('utf-8'))
         if len(decoded_key) == 32:
-            # It seems to be a valid, auto-generated key.
             fernet_key_bytes = key_from_user.encode('utf-8')
         else:
-            # It's a valid base64 string, but not the right length for Fernet.
-            # Treat it as a custom key that needs hashing.
             raise ValueError("Not a 32-byte key, treat as custom.")
     except (ValueError, binascii.Error, TypeError):
-        # If any decoding error occurs, it's a custom key.
-        # Derive the actual encryption key from it, matching the /hide logic.
         hashed_key = hashlib.sha256(key_from_user.encode()).digest()
         fernet_key_bytes = base64.urlsafe_b64encode(hashed_key)
 
@@ -332,16 +325,17 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 
 @app.route('/hide', methods=['POST'])
 def hide():
-    # Define a safety limit for the output image size to prevent server crashes.
-    # 12 million pixels (e.g., 4000x3000) is a reasonable limit for most hosting platforms.
     MAX_OUTPUT_PIXELS = 12_000_000 
 
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        # Step 1: Read the secret image first to determine required capacity.
+        # Step 1: Process SECRET image first. Its quality is always preserved.
         secret_image = read_image_from_request('secret')
+        secret_h, secret_w, _ = secret_image.shape
+        if secret_h == 0: return jsonify({'success': False, 'error': 'Secret image has invalid height.'})
+        target_aspect_ratio = secret_w / secret_h
 
-        # Step 2: Determine the key for encryption.
+        # Step 2: Determine encryption key.
         user_key = request.form.get('key', '').strip()
         if user_key:
             key_to_return = user_key
@@ -351,57 +345,62 @@ def hide():
             key_for_fernet = Fernet.generate_key()
             key_to_return = key_for_fernet.decode('utf-8')
 
-        # Step 3: Calculate the exact payload size from the unaltered secret image.
+        # Step 3: Calculate required payload size.
         is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
-        if not is_success:
-            return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
+        if not is_success: return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
         
         encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
         data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
         payload_bits = len(data_to_hide) * 8
 
-        # Step 4: Check if the required size exceeds the server's safety limit.
+        # Step 4: Calculate final canvas dimensions based on secret image's aspect ratio.
         required_pixels = math.ceil(payload_bits / 3)
+        
+        # Check against server safety limit.
         if required_pixels > MAX_OUTPUT_PIXELS:
-            error_msg = (
-                f"The secret image is too large to process safely. "
-                f"It requires an output image of over {MAX_OUTPUT_PIXELS / 1_000_000:.1f} megapixels, which exceeds the server limit. "
-                "Please use a smaller secret image."
-            )
+            error_msg = f"Secret image is too large. It requires an output image of over {MAX_OUTPUT_PIXELS / 1_000_000:.1f} megapixels, which exceeds server limits."
             return jsonify({'success': False, 'error': error_msg})
 
-        # Step 5: Read the cover image.
+        # Calculate final width and height preserving the secret's aspect ratio.
+        # Handle potential division by zero if target_aspect_ratio is 0
+        if target_aspect_ratio == 0: return jsonify({'success': False, 'error': 'Secret image has invalid width.'})
+        final_h = math.ceil(math.sqrt(required_pixels / target_aspect_ratio))
+        final_w = math.ceil(final_h * target_aspect_ratio)
+
+        # Step 5: Read cover image and perform a center crop to match the target aspect ratio.
         cover_image = read_image_from_request('cover')
-        h, w, _ = cover_image.shape
-        cover_capacity_bits = h * w * 3
+        cover_h, cover_w, _ = cover_image.shape
+        if cover_h == 0: return jsonify({'success': False, 'error': 'Cover image has invalid height.'})
+        cover_aspect_ratio = cover_w / cover_h
 
-        # Step 6: If cover image is too small, upscale it (we know it's safe to do so now).
-        if payload_bits > cover_capacity_bits:
-            print(f"Cover image is too small. Required bits: {payload_bits}, Available bits: {cover_capacity_bits}.")
-            
-            current_pixels = h * w
-            scale_factor = math.sqrt(required_pixels / current_pixels)
-            
-            new_w = math.ceil(w * scale_factor)
-            new_h = math.ceil(h * scale_factor)
-            
-            print(f"Upscaling cover image from {w}x{h} to {new_w}x{new_h} to fit secret data.")
-            cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+        if target_aspect_ratio > cover_aspect_ratio:
+            # Target is wider than cover; use full cover width and crop height.
+            new_height = int(cover_w / target_aspect_ratio)
+            y_start = (cover_h - new_height) // 2
+            cover_crop = cover_image[y_start:y_start + new_height, :]
+        else:
+            # Target is taller than cover; use full cover height and crop width.
+            new_width = int(cover_h * target_aspect_ratio)
+            x_start = (cover_w - new_width) // 2
+            cover_crop = cover_image[:, x_start:x_start + new_width]
 
-        # Step 7: Embed the unaltered secret data into the (now sufficiently large) cover image.
+        # Step 6: Create the steganographic canvas by resizing the cropped portion of the cover.
+        stego_canvas = cv2.resize(cover_crop, (final_w, final_h), interpolation=cv2.INTER_AREA)
+        
+        # Step 7: Embed secret data into the canvas.
         binary_secret_data = data_to_binary(data_to_hide)
-        flat_pixels = cover_image.ravel()
+        flat_pixels = stego_canvas.ravel()
 
         if payload_bits > len(flat_pixels):
-             return jsonify({'success': False, 'error': 'Capacity calculation error after resizing. Please try again.'})
+             return jsonify({'success': False, 'error': 'Capacity calculation error after crop/resize. Please try again.'})
 
         for i in range(payload_bits):
             flat_pixels[i] = (flat_pixels[i] & 0xFE) | int(binary_secret_data[i])
         
-        stego_image = flat_pixels.reshape(cover_image.shape)
+        stego_image = flat_pixels.reshape(stego_canvas.shape)
         key = key_to_return
         
-        # Step 8: Upload assets and return the result.
+        # Step 8: Upload assets and return result.
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
         secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
@@ -409,13 +408,13 @@ def hide():
         add_history_record(session['user_id'], 'Steganography (LSB)', {
             'original_url': cover_url, 'original_public_id': cover_pid,
             'secret_url': secret_url, 'secret_public_id': secret_pid,
-            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid, 'key': key
+            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid, 
+            'key': key
         })
         return jsonify({'success': True, 'hidden_image': encrypted_url, 'key': key})
 
     except Exception as e:
         traceback.print_exc()
-        # Return a clean JSON error on crash to prevent the frontend from breaking.
         return jsonify({'success': False, 'error': 'An unexpected server error occurred during image processing.'})
 
 
