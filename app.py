@@ -360,29 +360,33 @@ def hide():
             key_for_fernet = Fernet.generate_key()
             # This new generated key is what the user needs to see and use.
             key_to_return = key_for_fernet.decode('utf-8')
+        
+        # FIX: The resizing loop for the secret image is removed.
+        # Instead, we check capacity once and fail if it's insufficient.
+        # This preserves the secret image's quality (Issue #2) and avoids
+        # errors from malformed, tiny images (Issue #1).
 
-        while True:
-            is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
-            if not is_success:
-                return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
+        # Encode the secret image losslessly to PNG format in memory.
+        is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
+        if not is_success:
+            return jsonify({'success': False, 'error': 'Failed to encode secret image into PNG format.'})
 
-            encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
-            data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
-            payload_bits = len(data_to_hide) * 8
+        # Encrypt the data and add a delimiter.
+        encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
+        data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
+        payload_bits = len(data_to_hide) * 8
 
-            if payload_bits <= cover_capacity_bits:
-                break
+        # Check if the cover image has enough space.
+        if payload_bits > cover_capacity_bits:
+            error_message = (
+                f"The secret image is too large for the cover image. "
+                f"Required capacity: {payload_bits // 8} bytes; "
+                f"Available capacity: {cover_capacity_bits // 8} bytes. "
+                "Please use a larger cover image or a smaller secret image."
+            )
+            return jsonify({'success': False, 'error': error_message})
 
-            h_s, w_s, _ = secret_image.shape
-            new_w = int(w_s * 0.9)
-            new_h = int(h_s * 0.9)
-
-            if new_w < 1 or new_h < 1:
-                return jsonify({'success': False, 'error': 'Secret image is too large for the cover image, even after aggressive resizing.'})
-            
-            secret_image = cv2.resize(secret_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-            print(f"Steganography: Secret image too large, resizing to {new_w}x{new_h} and re-checking capacity.")
-
+        # If we get here, the data fits. Proceed with embedding.
         binary_secret_data = data_to_binary(data_to_hide)
         flat_pixels = cover_image.ravel()
         for i in range(payload_bits):
@@ -391,6 +395,7 @@ def hide():
         stego_image = flat_pixels.reshape(cover_image.shape)
         key = key_to_return
         
+        # Upload original (unaltered) secret image to history.
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
         secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
