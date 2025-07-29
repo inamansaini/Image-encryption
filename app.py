@@ -332,9 +332,13 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 
 @app.route('/hide', methods=['POST'])
 def hide():
+    # Define a safety limit for the output image size to prevent server crashes.
+    # 12 million pixels (e.g., 4000x3000) is a reasonable limit for most hosting platforms.
+    MAX_OUTPUT_PIXELS = 12_000_000 
+
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        # Step 1: Read the secret image first. Its quality will be preserved.
+        # Step 1: Read the secret image first to determine required capacity.
         secret_image = read_image_from_request('secret')
 
         # Step 2: Determine the key for encryption.
@@ -356,37 +360,38 @@ def hide():
         data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
         payload_bits = len(data_to_hide) * 8
 
-        # Step 4: Read the cover image.
+        # Step 4: Check if the required size exceeds the server's safety limit.
+        required_pixels = math.ceil(payload_bits / 3)
+        if required_pixels > MAX_OUTPUT_PIXELS:
+            error_msg = (
+                f"The secret image is too large to process safely. "
+                f"It requires an output image of over {MAX_OUTPUT_PIXELS / 1_000_000:.1f} megapixels, which exceeds the server limit. "
+                "Please use a smaller secret image."
+            )
+            return jsonify({'success': False, 'error': error_msg})
+
+        # Step 5: Read the cover image.
         cover_image = read_image_from_request('cover')
         h, w, _ = cover_image.shape
         cover_capacity_bits = h * w * 3
 
-        # Step 5: If cover image is too small, upscale it to fit the secret data.
-        # This solves both the capacity and quality issues simultaneously.
+        # Step 6: If cover image is too small, upscale it (we know it's safe to do so now).
         if payload_bits > cover_capacity_bits:
             print(f"Cover image is too small. Required bits: {payload_bits}, Available bits: {cover_capacity_bits}.")
             
-            # Calculate the number of pixels required to hold the data.
-            required_pixels = math.ceil(payload_bits / 3)
             current_pixels = h * w
-            
-            # Determine the scaling factor needed to reach the required pixel count.
             scale_factor = math.sqrt(required_pixels / current_pixels)
             
-            # Calculate new dimensions for the cover image, preserving its aspect ratio.
             new_w = math.ceil(w * scale_factor)
             new_h = math.ceil(h * scale_factor)
             
             print(f"Upscaling cover image from {w}x{h} to {new_w}x{new_h} to fit secret data.")
-            
-            # Resize the cover image using an interpolation method suitable for upscaling.
             cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
-        # Step 6: Embed the unaltered secret data into the (now sufficiently large) cover image.
+        # Step 7: Embed the unaltered secret data into the (now sufficiently large) cover image.
         binary_secret_data = data_to_binary(data_to_hide)
         flat_pixels = cover_image.ravel()
 
-        # Final safety check to ensure capacity is sufficient after resize.
         if payload_bits > len(flat_pixels):
              return jsonify({'success': False, 'error': 'Capacity calculation error after resizing. Please try again.'})
 
@@ -396,7 +401,7 @@ def hide():
         stego_image = flat_pixels.reshape(cover_image.shape)
         key = key_to_return
         
-        # Step 7: Upload assets. The secret image is the original, unaltered one.
+        # Step 8: Upload assets and return the result.
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
         secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
@@ -410,7 +415,8 @@ def hide():
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'An unexpected error occurred: ' + str(e)})
+        # Return a clean JSON error on crash to prevent the frontend from breaking.
+        return jsonify({'success': False, 'error': 'An unexpected server error occurred during image processing.'})
 
 
 @app.route('/chaotic_encrypt', methods=['POST'])
