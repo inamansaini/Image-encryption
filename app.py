@@ -147,12 +147,19 @@ def data_to_binary(data):
 def reveal_data_lsb(stego_image, key_from_user):
     fernet_key_bytes = None
     try:
+        # A valid Fernet key is a 32-byte URL-safe base64-encoded string.
+        # We test if the provided key matches this format.
         decoded_key = base64.urlsafe_b64decode(key_from_user.encode('utf-8'))
         if len(decoded_key) == 32:
+            # It seems to be a valid, auto-generated key.
             fernet_key_bytes = key_from_user.encode('utf-8')
         else:
+            # It's a valid base64 string, but not the right length for Fernet.
+            # Treat it as a custom key that needs hashing.
             raise ValueError("Not a 32-byte key, treat as custom.")
     except (ValueError, binascii.Error, TypeError):
+        # If any decoding error occurs, it's a custom key.
+        # Derive the actual encryption key from it, matching the /hide logic.
         hashed_key = hashlib.sha256(key_from_user.encode()).digest()
         fernet_key_bytes = base64.urlsafe_b64encode(hashed_key)
 
@@ -325,88 +332,79 @@ def dna_based(): return render_template('dna_based.html') if 'user_id' in sessio
 
 @app.route('/hide', methods=['POST'])
 def hide():
-    # Set a hard limit on the steganographic image dimensions to ensure
-    # stability on resource-constrained hosting platforms. 3.4MP is a safe bet.
-    MAX_CANVAS_PIXELS = 3_400_000
-
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
-        # Step 1: Prepare the canvas. Read the cover image and cap its size.
-        # This defines the maximum available space for the secret data.
         cover_image = read_image_from_request('cover')
+        MAX_PIXELS = 3400000
         h, w, _ = cover_image.shape
-        if h * w > MAX_CANVAS_PIXELS:
-            scale = math.sqrt(MAX_CANVAS_PIXELS / (h * w))
+        if h * w > MAX_PIXELS:
+            scale = math.sqrt(MAX_PIXELS / (h * w))
             new_w, new_h = int(w * scale), int(h * scale)
-            stego_canvas = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        else:
-            stego_canvas = cover_image.copy()
-        
-        canvas_capacity_bits = stego_canvas.shape[0] * stego_canvas.shape[1] * 3
+            cover_image = cv2.resize(cover_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            print(f"Steganography: Cover image resized to {new_w}x{new_h} to meet size limits.")
 
-        # Step 2: Read the secret image.
+        cover_capacity_bits = cover_image.shape[0] * cover_image.shape[1] * 3
+
         secret_image = read_image_from_request('secret')
-
-        # Step 3: Determine encryption key.
+        
         user_key = request.form.get('key', '').strip()
+        
         if user_key:
+            # User provided a custom key.
             key_to_return = user_key
+            # The key for Fernet must be derived from the user's custom key.
             hashed_key = hashlib.sha256(user_key.encode()).digest()
             key_for_fernet = base64.urlsafe_b64encode(hashed_key)
         else:
+            # User did not provide a key, so we generate one.
             key_for_fernet = Fernet.generate_key()
+            # This new generated key is what the user needs to see and use.
             key_to_return = key_for_fernet.decode('utf-8')
 
-        # Step 4: Iteratively resize the SECRET image until its data fits in the canvas.
-        # This is a necessary trade-off for server stability. Quality is preserved
-        # if the secret image is small enough to begin with.
         while True:
             is_success, secret_data_encoded = cv2.imencode('.png', secret_image)
-            if not is_success: return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
-            
+            if not is_success:
+                return jsonify({'success': False, 'error': 'Failed to encode secret image.'})
+
             encrypted_secret_data = Fernet(key_for_fernet).encrypt(secret_data_encoded.tobytes())
             data_to_hide = encrypted_secret_data + b'!!STEGO_END!!'
             payload_bits = len(data_to_hide) * 8
 
-            if payload_bits <= canvas_capacity_bits:
-                break  # The secret data now fits.
+            if payload_bits <= cover_capacity_bits:
+                break
 
-            # If it doesn't fit, shrink the secret image and try again.
             h_s, w_s, _ = secret_image.shape
-            new_w_s = int(w_s * 0.9)
-            new_h_s = int(h_s * 0.9)
+            new_w = int(w_s * 0.9)
+            new_h = int(h_s * 0.9)
 
-            if new_w_s < 1 or new_h_s < 1:
-                return jsonify({'success': False, 'error': 'The cover image is too small to hold even a minimal version of the secret image.'})
+            if new_w < 1 or new_h < 1:
+                return jsonify({'success': False, 'error': 'Secret image is too large for the cover image, even after aggressive resizing.'})
             
-            secret_image = cv2.resize(secret_image, (new_w_s, new_h_s), interpolation=cv2.INTER_AREA)
+            secret_image = cv2.resize(secret_image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            print(f"Steganography: Secret image too large, resizing to {new_w}x{new_h} and re-checking capacity.")
 
-        # Step 5: Embed the (potentially resized) secret data into the canvas.
         binary_secret_data = data_to_binary(data_to_hide)
-        flat_pixels = stego_canvas.ravel()
-        
+        flat_pixels = cover_image.ravel()
         for i in range(payload_bits):
             flat_pixels[i] = (flat_pixels[i] & 0xFE) | int(binary_secret_data[i])
         
-        stego_image = flat_pixels.reshape(stego_canvas.shape)
+        stego_image = flat_pixels.reshape(cover_image.shape)
         key = key_to_return
         
-        # Step 6: Upload assets and return result.
         cover_url, cover_pid = upload_numpy_to_cloudinary(cover_image)
-        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image) # This is now the resized version
+        secret_url, secret_pid = upload_numpy_to_cloudinary(secret_image)
         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(stego_image)
         
         add_history_record(session['user_id'], 'Steganography (LSB)', {
             'original_url': cover_url, 'original_public_id': cover_pid,
             'secret_url': secret_url, 'secret_public_id': secret_pid,
-            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid, 
-            'key': key
+            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid, 'key': key
         })
         return jsonify({'success': True, 'hidden_image': encrypted_url, 'key': key})
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'An unexpected server error occurred during image processing.'})
+        return jsonify({'success': False, 'error': 'An unexpected error occurred: ' + str(e)})
 
 
 @app.route('/chaotic_encrypt', methods=['POST'])
