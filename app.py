@@ -258,12 +258,35 @@ def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, n
     return cv2.bitwise_xor(image_array, masked_keystream)
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
+    """
+    Encrypts/decrypts an image using a two-step process:
+    1. A key-based additive color shift.
+    2. A standard XOR stream cipher.
+    This version is intentionally less secure to allow the user to visually
+    identify the encrypted image's original structure.
+    """
     shape_to_use = image_array.shape
     image_flat_bytes = image_array.flatten()
-    seed = hashlib.sha512(key_string.encode()).digest()
+
+    # Step 1: Derive a simple byte offset from the key for the color shift.
+    key_hash = hashlib.sha256(f"offset_{key_string}".encode()).digest()
+    offset = key_hash[0]  # An integer between 0 and 255
+
+    # Step 2: Generate the XOR keystream (same as before).
+    xor_seed = hashlib.sha512(key_string.encode()).digest()
     total_bytes = len(image_flat_bytes)
-    key_stream = np.frombuffer(seed * (total_bytes // len(seed) + 1), dtype=np.uint8)[:total_bytes]
-    processed_flat_bytes = np.bitwise_xor(image_flat_bytes, key_stream)
+    key_stream = np.frombuffer(xor_seed * (total_bytes // len(xor_seed) + 1), dtype=np.uint8)[:total_bytes]
+
+    if not decrypt:
+        # ENCRYPTION: Apply color shift, then XOR.
+        # NumPy's uint8 handles the modular arithmetic (wrap-around) automatically.
+        shifted_bytes = image_flat_bytes + offset
+        processed_flat_bytes = np.bitwise_xor(shifted_bytes, key_stream)
+    else:
+        # DECRYPTION: Undo XOR, then undo color shift.
+        xor_undone_bytes = np.bitwise_xor(image_flat_bytes, key_stream)
+        processed_flat_bytes = xor_undone_bytes - offset
+
     return processed_flat_bytes.reshape(shape_to_use)
 
 def process_dna_image(image_array, key, decrypt=False):
