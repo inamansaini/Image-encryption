@@ -147,19 +147,12 @@ def data_to_binary(data):
 def reveal_data_lsb(stego_image, key_from_user):
     fernet_key_bytes = None
     try:
-        # A valid Fernet key is a 32-byte URL-safe base64-encoded string.
-        # We test if the provided key matches this format.
         decoded_key = base64.urlsafe_b64decode(key_from_user.encode('utf-8'))
         if len(decoded_key) == 32:
-            # It seems to be a valid, auto-generated key.
             fernet_key_bytes = key_from_user.encode('utf-8')
         else:
-            # It's a valid base64 string, but not the right length for Fernet.
-            # Treat it as a custom key that needs hashing.
             raise ValueError("Not a 32-byte key, treat as custom.")
     except (ValueError, binascii.Error, TypeError):
-        # If any decoding error occurs, it's a custom key.
-        # Derive the actual encryption key from it, matching the /hide logic.
         hashed_key = hashlib.sha256(key_from_user.encode()).digest()
         fernet_key_bytes = base64.urlsafe_b64encode(hashed_key)
 
@@ -258,32 +251,18 @@ def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, n
     return cv2.bitwise_xor(image_array, masked_keystream)
 
 def process_nn_image_cipher(image_array, key_string, decrypt=False):
-    """
-    Encrypts/decrypts an image using a two-step process:
-    1. A key-based additive color shift.
-    2. A standard XOR stream cipher.
-    This version is intentionally less secure to allow the user to visually
-    identify the encrypted image's original structure.
-    """
     shape_to_use = image_array.shape
     image_flat_bytes = image_array.flatten()
-
-    # Step 1: Derive a simple byte offset from the key for the color shift.
     key_hash = hashlib.sha256(f"offset_{key_string}".encode()).digest()
-    offset = key_hash[0]  # An integer between 0 and 255
-
-    # Step 2: Generate the XOR keystream (same as before).
+    offset = key_hash[0]
     xor_seed = hashlib.sha512(key_string.encode()).digest()
     total_bytes = len(image_flat_bytes)
     key_stream = np.frombuffer(xor_seed * (total_bytes // len(xor_seed) + 1), dtype=np.uint8)[:total_bytes]
 
     if not decrypt:
-        # ENCRYPTION: Apply color shift, then XOR.
-        # NumPy's uint8 handles the modular arithmetic (wrap-around) automatically.
         shifted_bytes = image_flat_bytes + offset
         processed_flat_bytes = np.bitwise_xor(shifted_bytes, key_stream)
     else:
-        # DECRYPTION: Undo XOR, then undo color shift.
         xor_undone_bytes = np.bitwise_xor(image_flat_bytes, key_stream)
         processed_flat_bytes = xor_undone_bytes - offset
 
@@ -373,15 +352,11 @@ def hide():
         user_key = request.form.get('key', '').strip()
         
         if user_key:
-            # User provided a custom key.
-            key_to_return = user_key
-            # The key for Fernet must be derived from the user's custom key.
             hashed_key = hashlib.sha256(user_key.encode()).digest()
             key_for_fernet = base64.urlsafe_b64encode(hashed_key)
+            key_to_return = user_key
         else:
-            # User did not provide a key, so we generate one.
             key_for_fernet = Fernet.generate_key()
-            # This new generated key is what the user needs to see and use.
             key_to_return = key_for_fernet.decode('utf-8')
 
         while True:
@@ -429,7 +404,6 @@ def hide():
         traceback.print_exc()
         return jsonify({'success': False, 'error': 'An unexpected error occurred: ' + str(e)})
 
-
 @app.route('/chaotic_encrypt', methods=['POST'])
 def chaotic_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -459,9 +433,45 @@ def chaotic_encrypt():
             'key': final_key, 'details': {'algorithm': algorithm}
         })
         
-        download_url = f"/download_image?url={encrypted_url}&filename=encrypted_image.png"
+        download_url = f"/download_image?url={encrypted_url}&filename=chaotic_encrypted.png"
         return jsonify({'success': True, 'encrypted_image': download_url, 'key': final_key})
         
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/chaotic_decrypt', methods=['POST'])
+def chaotic_decrypt():
+    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        encrypted_image = read_and_resize_image('image')
+        algorithm = request.form.get('algorithm')
+        key = request.form.get('key')
+
+        if not key:
+            return jsonify({'success': False, 'error': 'A decryption key is required.'})
+        
+        decrypted_image = None
+        if algorithm == 'arnold':
+            try:
+                decrypted_image = apply_arnold_cat_map(encrypted_image, int(key), decrypt=True)
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid key for Arnold map. It must be an integer.'})
+        elif algorithm in ['logistic', 'henon']:
+            try:
+                if ',' not in key: raise ValueError("Key format incorrect.")
+                _ = list(map(float, key.split(',')))
+                decrypted_image = apply_pixel_shuffling(encrypted_image, key, algorithm, decrypt=True)
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'error': f'Invalid key for {algorithm.capitalize()} map. It must be two comma-separated numbers.'})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid algorithm.'})
+
+        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
+        
+        download_url = f"/download_image?url={decrypted_url}&filename=chaotic_decrypted.png"
+        return jsonify({'success': True, 'decrypted_image': download_url})
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -478,12 +488,9 @@ def bitplane_encrypt():
         if not key:
             key = secrets.token_hex(16)
         
-        
         nonce = secrets.token_bytes(8)
-
         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
         encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm, nonce)
-
         composite_key = f"{key}:{nonce.hex()}"
 
         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
@@ -524,11 +531,8 @@ def bitplane_decrypt():
             return jsonify({'success': False, 'error': 'Invalid key format. The key must be in the format `key:nonce`.'})
 
         planes_to_decrypt = [int(p) for p in planes_str.split(',')]
-        
         decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm, nonce)
-
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
-
         download_url = f"/download_image?url={decrypted_url}&filename=bitplane_decrypted.png"
         return jsonify({'success': True, 'decrypted_image': download_url})
 
@@ -541,9 +545,7 @@ def neural_network_encrypt():
     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     try:
         original_image = read_and_resize_image()
-        
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
-        
         encrypted_image = process_nn_image_cipher(original_image, key)
 
         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
@@ -554,7 +556,9 @@ def neural_network_encrypt():
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
             'key': key, 'details': {'original_shape': str(original_image.shape)}
         })
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+        
+        download_url = f"/download_image?url={encrypted_url}&filename=nn_encrypted.png"
+        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -571,10 +575,9 @@ def neural_network_decrypt():
             return jsonify({'success': False, 'error': 'Decryption key is required.'})
 
         decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
-        
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
-
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+        download_url = f"/download_image?url={decrypted_url}&filename=nn_decrypted.png"
+        return jsonify({'success': True, 'decrypted_image': download_url})
 
     except Exception as e:
         traceback.print_exc()
@@ -586,7 +589,6 @@ def dna_encrypt():
     try:
         original_image = read_image_from_request()
         key = request.form.get('key', '').strip() or secrets.token_hex(16)
-        
         encrypted_image = process_dna_image(original_image, key)
 
         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
@@ -597,7 +599,9 @@ def dna_encrypt():
             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
             'key': key, 'details': {'original_shape': str(original_image.shape)}
         })
-        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
+        
+        download_url = f"/download_image?url={encrypted_url}&filename=dna_encrypted.png"
+        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -618,15 +622,14 @@ def decrypt():
             raise ValueError("Failed to decode the revealed secret image data.")
 
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image_array, folder="decrypted_images")
-        
-        return jsonify({'success': True, 'decrypted_image': decrypted_url})
+        download_url = f"/download_image?url={decrypted_url}&filename=revealed_image.png"
+        return jsonify({'success': True, 'decrypted_image': download_url})
     
     except Exception as e:
         traceback.print_exc()
         if "Incorrect padding" in str(e) or "Invalid token" in str(e):
              return jsonify({'success': False, 'error': 'Decryption failed. The key is incorrect or the image is corrupt.'})
         return jsonify({'success': False, 'error': f'An error occurred: {e}'})
-
 
 @app.route('/decrypt_from_history/<string:record_id>', methods=['POST'])
 def decrypt_from_history(record_id):
