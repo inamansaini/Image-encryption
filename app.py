@@ -557,8 +557,8 @@ def neural_network_encrypt():
             'key': key, 'details': {'original_shape': str(original_image.shape)}
         })
         
-        download_url = f"/download_image?url={encrypted_url}&filename=nn_encrypted.png"
-        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
+        # FIX: Return the direct Cloudinary URL. The frontend JS will build the download link.
+        return jsonify({'success': True, 'encrypted_image': encrypted_url, 'key': key})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -576,8 +576,9 @@ def neural_network_decrypt():
 
         decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
-        download_url = f"/download_image?url={decrypted_url}&filename=nn_decrypted.png"
-        return jsonify({'success': True, 'decrypted_image': download_url})
+        
+        # FIX: Return the direct Cloudinary URL. The frontend will build the download link.
+        return jsonify({'success': True, 'decrypted_image': decrypted_url})
 
     except Exception as e:
         traceback.print_exc()
