@@ -1,3 +1,5 @@
+# Environment variables
+.env
 # Virtual Environments
 tf-env/
 venv/
