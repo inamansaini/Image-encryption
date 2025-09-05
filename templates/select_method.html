@@ -7,9 +7,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-     <link rel="stylesheet" href="{{ url_for('static', filename='select_method.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='select_method.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-   
+    
 </head>
 <body>
 
@@ -66,13 +66,12 @@
                 </p>
             </div>
             
-            <div class="method-card disabled">
+            <div class="method-card" onclick="window.location.href='/dna'">
                 <div class="method-icon"><i class="fas fa-dna"></i></div>
                 <h2>DNA-Based Encryption</h2>
                 <p class="method-description">
                     Converts pixel values to DNA sequences, applies biological-inspired operations, then decodes for high-security.
                 </p>
-                <div class="status-label">Coming Soon</div>
             </div>
         </div>
     </main>

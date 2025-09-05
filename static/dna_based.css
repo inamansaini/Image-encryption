@@ -5,16 +5,15 @@
     --accent-color: #3772ff;
     --success-color: #10b981;
     --danger-color: #f43f5e;
+    --secondary-color: #9333ea;
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
 }
-
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
-
 body {
     font-family: 'Poppins', sans-serif;
     background: linear-gradient(45deg, #0f0c29, #302b63, #24243e);
@@ -22,13 +21,11 @@ body {
     animation: gradientBG 15s ease infinite;
     color: var(--text-color);
 }
-
 @keyframes gradientBG {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-
 .top-nav {
     width: 100%;
     padding: 0.5rem 1rem;
@@ -36,17 +33,15 @@ body {
     justify-content: space-between;
     align-items: center;
     background: #0f0c29;
-    border-bottom: 1px solid var(--glass-border);
+    border-block: 1px solid var(--glass-border);
     position: sticky;
     top: 0;
     z-index: 1000;
 }
-
 .top-nav div {
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
 }
-
 .top-nav a {
     color: var(--label-color);
     text-decoration: none;
@@ -58,12 +53,10 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 8px;
 }
-
 .top-nav a:hover {
     color: var(--primary-color);
     background: var(--glass-bg);
 }
-
 .container {
     display: grid;
     grid-template-columns: 1fr;
@@ -74,29 +67,25 @@ body {
     max-width: 1400px;
     margin: 0 auto;
 }
-
 @media (min-width: 1024px) {
     .container {
         grid-template-columns: 1fr 1fr;
     }
 }
-
 .page-header {
     text-align: center;
     padding: 0 1rem;
+    margin-bottom: -1rem;
 }
-
 .page-header h1 {
     font-weight: 600;
     font-size: 2.2rem;
     margin-bottom: 0.5rem;
 }
-
 .page-header p {
     color: var(--label-color);
     font-size: 1.1rem;
 }
-
 .io-card, .info-card {
     background: var(--glass-bg);
     backdrop-filter: blur(10px);
@@ -107,7 +96,10 @@ body {
     display: flex;
     flex-direction: column;
 }
-
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .io-card h2 {
     text-align: center;
     margin-bottom: 2rem;
@@ -117,100 +109,89 @@ body {
     justify-content: center;
     gap: 10px;
 }
-
 .info-card h3 {
     color: var(--accent-color);
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 8px;
+    font-weight: 600;
 }
-
 .info-card p {
     color: var(--label-color);
     line-height: 1.7;
 }
-
 .io-form {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     flex-grow: 1;
 }
-
 .file-drop-area {
-    border: 2px dashed var(--glass-border);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
     border-radius: 10px;
     padding: 2rem 1rem;
     text-align: center;
     transition: all 0.3s ease;
     cursor: pointer;
+    background-color: rgba(255,255,255,0.05);
 }
-
-.file-drop-area.highlight {
+.file-drop-area:hover, .file-drop-area.active {
+    background-color: rgba(255,255,255,0.1);
     border-color: var(--accent-color);
-    background-color: var(--glass-bg);
 }
-
 .file-drop-area .icon-upload {
     font-size: 2.5rem;
     color: var(--accent-color);
     margin-bottom: 1rem;
 }
-
 .file-drop-area p {
     font-size: 1.1rem;
     color: var(--text-color);
 }
-
 .file-drop-area span {
     color: var(--label-color);
     margin: 0.5rem 0;
     display: block;
 }
-
 .file-drop-area .file-label {
     color: var(--accent-color);
     font-weight: 500;
-    text-decoration: underline;
+    text-decoration: none;
 }
-
 .file-drop-area input[type="file"] {
     display: none;
 }
-
 .image-preview {
     display: none;
     max-width: 100%;
-    height: auto;
     max-height: 250px;
     object-fit: contain;
     margin: 0 auto;
     border-radius: 8px;
 }
-
 .input-group label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 0.5rem;
     font-weight: 500;
     color: var(--label-color);
 }
-
 .input-group input[type="text"] {
     width: 100%;
     padding: 12px 15px;
     background: transparent;
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     color: var(--primary-color);
     font-size: 1rem;
+    transition: border-color 0.3s ease;
 }
-
 .input-group input[type="text"]:focus {
     outline: none;
     border-color: var(--accent-color);
 }
-
 .btn-submit {
     width: 100%;
     padding: 14px;
@@ -228,55 +209,98 @@ body {
     gap: 10px;
     margin-top: auto;
 }
-
 .btn-submit:hover {
     background: #275dce;
     box-shadow: 0 0 15px rgba(55, 114, 255, 0.5);
     transform: translateY(-2px);
 }
-
 .result-area {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
     border-top: 1px solid var(--glass-border);
+    display: none;
 }
-
-@media (max-width: 768px) {
-    .top-nav {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 1rem;
-    }
-
-    .top-nav div {
-        width: 100%;
-    }
-
-    .top-nav a {
-        justify-content: center;
-    }
-
-    .top-nav div:last-child {
-        border-top: 1px solid var(--glass-border);
-        padding-top: 1rem;
-    }
-
-    .container {
-        padding: 1rem;
-    }
-
-    .page-header h1 {
-        font-size: 1.8rem;
-    }
-
-    .page-header p {
-        font-size: 1rem;
-    }
-
-    .io-card, .info-card {
-        padding: 1.5rem;
-    }
+.result-area.success h4 { color: var(--success-color); }
+.result-area.error h4 { color: var(--danger-color); }
+.result-area h4 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.key-container {
+    background: rgba(0,0,0,0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.key-container p {
+    font-weight: 500;
+    color: var(--label-color);
+    margin-bottom: 0.5rem;
+}
+.key-display-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+}
+.key-display {
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    flex-grow: 1;
+}
+.btn-copy-key {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--label-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-copy-key:hover {
+    background: var(--accent-color);
+    color: var(--primary-color);
+}
+.btn-copy-key.copied {
+    background: var(--success-color);
+    color: var(--primary-color);
+}
+.result-image-container {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.result-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+.btn-download {
+    width: 100%;
+    padding: 14px;
+    color: var(--primary-color);
+    background: var(--secondary-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+}
+.btn-download:hover {
+    background: #7e22ce;
 }
 .site-footer {
     width: 100%;
@@ -284,19 +308,49 @@ body {
     padding: 1rem;
     margin-top: 2rem;
 }
-
 .site-footer p {
     color: var(--label-color);
     font-size: 0.85rem;
 }
-
 .site-footer a {
     color: var(--accent-color);
     text-decoration: none;
     font-weight: 500;
     transition: text-decoration 0.2s;
 }
-
 .site-footer a:hover {
     text-decoration: underline;
+}
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    .top-nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    .top-nav div {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 0.5rem;
+    }
+    .top-nav a {
+        justify-content: center;
+        width: 100%;
+    }
+    .page-header {
+        padding: 1.5rem 1rem 0 1rem;
+    }
+    .page-header h1 {
+        font-size: 1.8rem;
+    }
+    .page-header p {
+        font-size: 1rem;
+    }
+    .io-card, .info-card {
+        padding: 1.5rem;
+    }
 }
