@@ -1,7 +1,6 @@
 ﻿# PyTorch (CPU-only build for server compatibility)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
-torchvision
 
 # Web Application & Production Server
 Flask
