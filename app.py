@@ -499,89 +499,89 @@ def chaotic_decrypt():
 
 # --- START: BIT PLANE METHOD ---
 
-def get_keystream(image_shape, key_str, algorithm, nonce):
-    h, w, c = image_shape
-    total_bytes = h * w * c
-    cipher_key = hashlib.sha256(key_str.encode()).digest()
-    if algorithm == 'aes':
-        cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=nonce)
-    elif algorithm == 'des':
-        cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=nonce[:7])
-    else:
-        raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
-    keystream_bytes = cipher.encrypt(b'\x00' * total_bytes)
-    return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
-
-def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, nonce):
-    plane_mask = sum(1 << p for p in planes_to_process)
-    keystream_image = None
-    if algorithm == 'xor':
-        h, w, c = image_array.shape
-        total_bytes = h * w * c
-        seed = hashlib.sha256(key_str.encode() + nonce).digest()
-        keystream_bytes = (seed * (total_bytes // len(seed) + 1))[:total_bytes]
-        keystream_image = np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_array.shape)
-    else:
-        keystream_image = get_keystream(image_array.shape, key_str, algorithm, nonce)
-    masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
-    return cv2.bitwise_xor(image_array, masked_keystream)
-
-@app.route('/bitplane')
-def bitplane(): return render_template('bitplane_method.html') if 'user_id' in session else redirect(url_for('login'))
-
-@app.route('/bitplane_encrypt', methods=['POST'])
-def bitplane_encrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    try:
-        original_image = read_image_from_request('image')
-        planes_str = request.form.get('planes')
-        algorithm = request.form.get('algorithm')
-        key = request.form.get('key', '').strip()
-        if not key:
-            key = secrets.token_hex(16)
-        nonce = secrets.token_bytes(8)
-        planes_to_encrypt = [int(p) for p in planes_str.split(',')]
-        encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm, nonce)
-        composite_key = f"{key}:{nonce.hex()}"
-        original_url, original_pid = upload_numpy_to_cloudinary(original_image)
-        encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(encrypted_image)
-        add_history_record(session['user_id'], 'Bitplane', {
-            'original_url': original_url, 'original_public_id': original_pid,
-            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
-            'key': composite_key,
-            'details': {'planes': planes_str, 'algorithm': algorithm}
-        })
-        download_url = f"/download_image?url={encrypted_url}&filename=bitplane_encrypted.png"
-        return jsonify({'success': True, 'encrypted_image': download_url, 'key': composite_key})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/bitplane_decrypt', methods=['POST'])
-def bitplane_decrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    try:
-        encrypted_image = read_image_from_request('image')
-        planes_str = request.form.get('planes')
-        algorithm = request.form.get('algorithm')
-        composite_key = request.form.get('key', '').strip()
-        if not composite_key:
-            return jsonify({'success': False, 'error': 'A decryption key is required.'})
-        try:
-            key, nonce_hex = composite_key.rsplit(':', 1)
-            nonce = bytes.fromhex(nonce_hex)
-            if len(nonce) != 8:
-                raise ValueError("Invalid nonce format in key.")
-        except (ValueError, IndexError):
-            return jsonify({'success': False, 'error': 'Invalid key format. The key must be in the format `key:nonce`.'})
-        planes_to_decrypt = [int(p) for p in planes_str.split(',')]
-        decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm, nonce)
-        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
-        download_url = f"/download_image?url={decrypted_url}&filename=bitplane_decrypted.png"
-        return jsonify({'success': True, 'decrypted_image': download_url})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)})
+# def get_keystream(image_shape, key_str, algorithm, nonce):
+#     h, w, c = image_shape
+#     total_bytes = h * w * c
+#     cipher_key = hashlib.sha256(key_str.encode()).digest()
+#     if algorithm == 'aes':
+#         cipher = AES.new(cipher_key[:16], AES.MODE_CTR, nonce=nonce)
+#     elif algorithm == 'des':
+#         cipher = DES.new(cipher_key[:8], DES.MODE_CTR, nonce=nonce[:7])
+#     else:
+#         raise ValueError(f"Keystream generation not supported for algorithm: {algorithm}")
+#     keystream_bytes = cipher.encrypt(b'\x00' * total_bytes)
+#     return np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_shape)
+#
+# def process_bitplane_image(image_array, planes_to_process, key_str, algorithm, nonce):
+#     plane_mask = sum(1 << p for p in planes_to_process)
+#     keystream_image = None
+#     if algorithm == 'xor':
+#         h, w, c = image_array.shape
+#         total_bytes = h * w * c
+#         seed = hashlib.sha256(key_str.encode() + nonce).digest()
+#         keystream_bytes = (seed * (total_bytes // len(seed) + 1))[:total_bytes]
+#         keystream_image = np.frombuffer(keystream_bytes, dtype=np.uint8).reshape(image_array.shape)
+#     else:
+#         keystream_image = get_keystream(image_array.shape, key_str, algorithm, nonce)
+#     masked_keystream = cv2.bitwise_and(keystream_image, plane_mask)
+#     return cv2.bitwise_xor(image_array, masked_keystream)
+#
+# @app.route('/bitplane')
+# def bitplane(): return render_template('bitplane_method.html') if 'user_id' in session else redirect(url_for('login'))
+#
+# @app.route('/bitplane_encrypt', methods=['POST'])
+# def bitplane_encrypt():
+#     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+#     try:
+#         original_image = read_image_from_request('image')
+#         planes_str = request.form.get('planes')
+#         algorithm = request.form.get('algorithm')
+#         key = request.form.get('key', '').strip()
+#         if not key:
+#             key = secrets.token_hex(16)
+#         nonce = secrets.token_bytes(8)
+#         planes_to_encrypt = [int(p) for p in planes_str.split(',')]
+#         encrypted_image = process_bitplane_image(original_image, planes_to_encrypt, key, algorithm, nonce)
+#         composite_key = f"{key}:{nonce.hex()}"
+#         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
+#         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(encrypted_image)
+#         add_history_record(session['user_id'], 'Bitplane', {
+#             'original_url': original_url, 'original_public_id': original_pid,
+#             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
+#             'key': composite_key,
+#             'details': {'planes': planes_str, 'algorithm': algorithm}
+#         })
+#         download_url = f"/download_image?url={encrypted_url}&filename=bitplane_encrypted.png"
+#         return jsonify({'success': True, 'encrypted_image': download_url, 'key': composite_key})
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({'success': False, 'error': str(e)})
+#
+# @app.route('/bitplane_decrypt', methods=['POST'])
+# def bitplane_decrypt():
+#     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+#     try:
+#         encrypted_image = read_image_from_request('image')
+#         planes_str = request.form.get('planes')
+#         algorithm = request.form.get('algorithm')
+#         composite_key = request.form.get('key', '').strip()
+#         if not composite_key:
+#             return jsonify({'success': False, 'error': 'A decryption key is required.'})
+#         try:
+#             key, nonce_hex = composite_key.rsplit(':', 1)
+#             nonce = bytes.fromhex(nonce_hex)
+#             if len(nonce) != 8:
+#                 raise ValueError("Invalid nonce format in key.")
+#         except (ValueError, IndexError):
+#             return jsonify({'success': False, 'error': 'Invalid key format. The key must be in the format `key:nonce`.'})
+#         planes_to_decrypt = [int(p) for p in planes_str.split(',')]
+#         decrypted_image = process_bitplane_image(encrypted_image, planes_to_decrypt, key, algorithm, nonce)
+#         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
+#         download_url = f"/download_image?url={decrypted_url}&filename=bitplane_decrypted.png"
+#         return jsonify({'success': True, 'decrypted_image': download_url})
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({'success': False, 'error': str(e)})
 
 # --- END: BIT PLANE METHOD ---
 
@@ -669,108 +669,108 @@ def neural_network_decrypt():
 
 # --- START: DNA BASED METHOD ---
 
-DNA_MAP = {'00': 'A', '01': 'C', '10': 'G', '11': 'T'}
-REV_DNA_MAP = {v: k for k, v in DNA_MAP.items()}
-MUTATION_MAP = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-
-def _get_prng_state(key):
-    seed = int.from_bytes(hashlib.sha256(key.encode()).digest(), 'big')
-    return random.Random(seed)
-
-def process_dna_image(image_array, key, decrypt=False):
-    original_shape = image_array.shape
-    flat_pixels = image_array.flatten()
-    prng = _get_prng_state(key)
-    dna_sequences = []
-    for pixel_val in flat_pixels:
-        binary_val = format(pixel_val, '08b')
-        dna_seq = (DNA_MAP[binary_val[0:2]] + DNA_MAP[binary_val[2:4]] +
-                    DNA_MAP[binary_val[4:6]] + DNA_MAP[binary_val[6:8]])
-        dna_sequences.append(dna_seq)
-    num_sequences = len(dna_sequences)
-    indices = list(range(num_sequences))
-    prng.shuffle(indices)
-    inverse_indices = [0] * num_sequences
-    for i, p in enumerate(indices):
-        inverse_indices[p] = i
-    total_bases = num_sequences * 4
-    num_mutations = total_bases // 20
-    mutation_locations = set(prng.sample(range(total_bases), num_mutations))
-    if not decrypt:
-        shuffled_dna = [dna_sequences[i] for i in indices]
-        mutated_dna_list = []
-        base_counter = 0
-        for seq in shuffled_dna:
-            new_seq = ""
-            for base in seq:
-                if base_counter in mutation_locations:
-                    new_seq += MUTATION_MAP[base]
-                else:
-                    new_seq += base
-                base_counter += 1
-            mutated_dna_list.append(new_seq)
-        final_dna_sequences = mutated_dna_list
-    else:
-        unmutated_dna_list = []
-        base_counter = 0
-        for seq in dna_sequences:
-            new_seq = ""
-            for base in seq:
-                if base_counter in mutation_locations:
-                    new_seq += MUTATION_MAP[base]
-                else:
-                    new_seq += base
-                base_counter += 1
-            unmutated_dna_list.append(new_seq)
-        unshuffled_dna = [unmutated_dna_list[i] for i in inverse_indices]
-        final_dna_sequences = unshuffled_dna
-    final_pixels = []
-    for dna_seq in final_dna_sequences:
-        binary_string = (REV_DNA_MAP[dna_seq[0]] + REV_DNA_MAP[dna_seq[1]] +
-                            REV_DNA_MAP[dna_seq[2]] + REV_DNA_MAP[dna_seq[3]])
-        final_pixels.append(int(binary_string, 2))
-    processed_image = np.array(final_pixels, dtype=np.uint8).reshape(original_shape)
-    return processed_image
-
-@app.route('/dna')
-def dna_based(): return render_template('dna_based.html') if 'user_id' in session else redirect(url_for('login'))
-
-@app.route('/dna_encrypt', methods=['POST'])
-def dna_encrypt():
-    if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    try:
-        original_image = read_image_from_request()
-        key = request.form.get('key', '').strip() or secrets.token_hex(16)
-        encrypted_image = process_dna_image(original_image, key)
-        original_url, original_pid = upload_numpy_to_cloudinary(original_image)
-        encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(encrypted_image)
-        add_history_record(session['user_id'], 'DNA Based', {
-            'original_url': original_url, 'original_public_id': original_pid,
-            'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
-            'key': key, 'details': {'original_shape': str(original_image.shape)}
-        })
-        download_url = f"/download_image?url={encrypted_url}&filename=dna_encrypted.png"
-        return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/dna_decrypt', methods=['POST'])
-def dna_decrypt():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    try:
-        encrypted_image = read_image_from_request('image')
-        key = request.form.get('key')
-        if not key:
-            return jsonify({'success': False, 'error': 'Decryption key is required.'})
-        decrypted_image = process_dna_image(encrypted_image, key, decrypt=True)
-        decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
-        download_url = f"/download_image?url={decrypted_url}&filename=dna_decrypted.png"
-        return jsonify({'success': True, 'decrypted_image': download_url})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)})
+# DNA_MAP = {'00': 'A', '01': 'C', '10': 'G', '11': 'T'}
+# REV_DNA_MAP = {v: k for k, v in DNA_MAP.items()}
+# MUTATION_MAP = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+#
+# def _get_prng_state(key):
+#     seed = int.from_bytes(hashlib.sha256(key.encode()).digest(), 'big')
+#     return random.Random(seed)
+#
+# def process_dna_image(image_array, key, decrypt=False):
+#     original_shape = image_array.shape
+#     flat_pixels = image_array.flatten()
+#     prng = _get_prng_state(key)
+#     dna_sequences = []
+#     for pixel_val in flat_pixels:
+#         binary_val = format(pixel_val, '08b')
+#         dna_seq = (DNA_MAP[binary_val[0:2]] + DNA_MAP[binary_val[2:4]] +
+#                     DNA_MAP[binary_val[4:6]] + DNA_MAP[binary_val[6:8]])
+#         dna_sequences.append(dna_seq)
+#     num_sequences = len(dna_sequences)
+#     indices = list(range(num_sequences))
+#     prng.shuffle(indices)
+#     inverse_indices = [0] * num_sequences
+#     for i, p in enumerate(indices):
+#         inverse_indices[p] = i
+#     total_bases = num_sequences * 4
+#     num_mutations = total_bases // 20
+#     mutation_locations = set(prng.sample(range(total_bases), num_mutations))
+#     if not decrypt:
+#         shuffled_dna = [dna_sequences[i] for i in indices]
+#         mutated_dna_list = []
+#         base_counter = 0
+#         for seq in shuffled_dna:
+#             new_seq = ""
+#             for base in seq:
+#                 if base_counter in mutation_locations:
+#                     new_seq += MUTATION_MAP[base]
+#                 else:
+#                     new_seq += base
+#             base_counter += 1
+#             mutated_dna_list.append(new_seq)
+#         final_dna_sequences = mutated_dna_list
+#     else:
+#         unmutated_dna_list = []
+#         base_counter = 0
+#         for seq in dna_sequences:
+#             new_seq = ""
+#             for base in seq:
+#                 if base_counter in mutation_locations:
+#                     new_seq += MUTATION_MAP[base]
+#                 else:
+#                     new_seq += base
+#             base_counter += 1
+#             unmutated_dna_list.append(new_seq)
+#         unshuffled_dna = [unmutated_dna_list[i] for i in inverse_indices]
+#         final_dna_sequences = unshuffled_dna
+#     final_pixels = []
+#     for dna_seq in final_dna_sequences:
+#         binary_string = (REV_DNA_MAP[dna_seq[0]] + REV_DNA_MAP[dna_seq[1]] +
+#                             REV_DNA_MAP[dna_seq[2]] + REV_DNA_MAP[dna_seq[3]])
+#         final_pixels.append(int(binary_string, 2))
+#     processed_image = np.array(final_pixels, dtype=np.uint8).reshape(original_shape)
+#     return processed_image
+#
+# @app.route('/dna')
+# def dna_based(): return render_template('dna_based.html') if 'user_id' in session else redirect(url_for('login'))
+#
+# @app.route('/dna_encrypt', methods=['POST'])
+# def dna_encrypt():
+#     if 'user_id' not in session: return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+#     try:
+#         original_image = read_image_from_request()
+#         key = request.form.get('key', '').strip() or secrets.token_hex(16)
+#         encrypted_image = process_dna_image(original_image, key)
+#         original_url, original_pid = upload_numpy_to_cloudinary(original_image)
+#         encrypted_url, encrypted_pid = upload_numpy_to_cloudinary(encrypted_image)
+#         add_history_record(session['user_id'], 'DNA Based', {
+#             'original_url': original_url, 'original_public_id': original_pid,
+#             'encrypted_url': encrypted_url, 'encrypted_public_id': encrypted_pid,
+#             'key': key, 'details': {'original_shape': str(original_image.shape)}
+#         })
+#         download_url = f"/download_image?url={encrypted_url}&filename=dna_encrypted.png"
+#         return jsonify({'success': True, 'encrypted_image': download_url, 'key': key})
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({'success': False, 'error': str(e)})
+#
+# @app.route('/dna_decrypt', methods=['POST'])
+# def dna_decrypt():
+#     if 'user_id' not in session:
+#         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+#     try:
+#         encrypted_image = read_image_from_request('image')
+#         key = request.form.get('key')
+#         if not key:
+#             return jsonify({'success': False, 'error': 'Decryption key is required.'})
+#         decrypted_image = process_dna_image(encrypted_image, key, decrypt=True)
+#         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
+#         download_url = f"/download_image?url={decrypted_url}&filename=dna_decrypted.png"
+#         return jsonify({'success': True, 'decrypted_image': download_url})
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({'success': False, 'error': str(e)})
 
 # --- END: DNA BASED METHOD ---
 
@@ -796,20 +796,20 @@ def decrypt_from_history(record_id):
                 decrypted_image = apply_arnold_cat_map(encrypted_image, int(key), decrypt=True)
             else:
                 decrypted_image = apply_pixel_shuffling(encrypted_image, key, algo, decrypt=True)
-        elif method == 'Bitplane':
-            try:
-                secret_key, nonce_hex = key.rsplit(':', 1)
-                nonce = bytes.fromhex(nonce_hex)
-                if len(nonce) != 8:
-                    raise ValueError("Invalid nonce format in stored key.")
-            except (ValueError, IndexError):
-                return jsonify({'success': False, 'error': 'Cannot decrypt: The key format for this record is outdated.'})
-            planes = [int(p) for p in details['planes'].split(',')]
-            decrypted_image = process_bitplane_image(encrypted_image, planes, secret_key, details['algorithm'], nonce)
+        # elif method == 'Bitplane':
+        #     try:
+        #         secret_key, nonce_hex = key.rsplit(':', 1)
+        #         nonce = bytes.fromhex(nonce_hex)
+        #         if len(nonce) != 8:
+        #             raise ValueError("Invalid nonce format in stored key.")
+        #     except (ValueError, IndexError):
+        #         return jsonify({'success': False, 'error': 'Cannot decrypt: The key format for this record is outdated.'})
+        #     planes = [int(p) for p in details['planes'].split(',')]
+        #     decrypted_image = process_bitplane_image(encrypted_image, planes, secret_key, details['algorithm'], nonce)
         elif method == 'Neural Network':
             decrypted_image = process_nn_image_cipher(encrypted_image, key, decrypt=True)
-        elif method == 'DNA Based':
-            decrypted_image = process_dna_image(encrypted_image, key, decrypt=True)
+        # elif method == 'DNA Based':
+        #     decrypted_image = process_dna_image(encrypted_image, key, decrypt=True)
         if decrypted_image is None:
             return jsonify({'success': False, 'error': 'Decryption failed or method not supported.'})
         decrypted_url, _ = upload_numpy_to_cloudinary(decrypted_image, folder="decrypted_images")
@@ -832,9 +832,9 @@ def history_by_method(method):
     method_map = {
         'steganography': {'db_method': 'Steganography (LSB)', 'template': 'steganography_history.html'},
         'chaotic': {'db_method': 'Chaotic Map', 'template': 'chaotic_history.html'},
-        'bitplane': {'db_method': 'Bitplane', 'template': 'bitplane_history.html'},
+        # 'bitplane': {'db_method': 'Bitplane', 'template': 'bitplane_history.html'},
         'neural_network': {'db_method': 'Neural Network', 'template': 'neural_network_history.html'},
-        'dna': {'db_method': 'DNA Based', 'template': 'dna_history.html'}
+        # 'dna': {'db_method': 'DNA Based', 'template': 'dna_history.html'}
     }
     config = method_map.get(method)
     if not config:

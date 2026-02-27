@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Select Method - Image Steganography Pro</title>
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="{{ url_for('static', filename='select_method.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='select_method.css') }}">
+
 </head>
 <body>
 
@@ -29,51 +31,75 @@
         <div class="info-box">
             <i class="fas fa-lightbulb"></i>
             <p>
-                <strong>Quick Tip:</strong> This tool is designed for educational purposes. To protect your privacy, we recommend avoiding personal or sensitive images.
+                <strong>Quick Tip:</strong> This tool is designed for educational purposes.
+                To protect your privacy, we recommend avoiding personal or sensitive images.
             </p>
         </div>
 
         <div class="method-container">
+
             <div class="method-card" onclick="window.location.href='/standard'">
-                <div class="method-icon"><i class="fas fa-shield-alt"></i></div>
-                <h2>Standard Steganography</h2>
-                <p class="method-description">
-                    Hide images using traditional LSB steganography combined with military-grade encryption for robust security.
-                </p>
+                <div class="method-content">
+                    <div class="method-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h2>Standard Steganography</h2>
+                    <p class="method-description">
+                        Hide images using traditional LSB steganography combined with military-grade encryption for robust security.
+                    </p>
+                </div>
             </div>
 
             <div class="method-card" onclick="window.location.href='/chaotic'">
-                <div class="method-icon"><i class="fas fa-random"></i></div>
-                <h2>Chaotic Encryption</h2>
-                <p class="method-description">
-                    Utilize chaotic maps to scramble pixels based on chaos theory, providing a high level of enhanced security.
-                </p>
+                <div class="method-content">
+                    <div class="method-icon"><i class="fas fa-random"></i></div>
+                    <h2>Chaotic Encryption</h2>
+                    <p class="method-description">
+                        Utilize chaotic maps to scramble pixels based on chaos theory, providing a high level of enhanced security.
+                    </p>
+                </div>
             </div>
 
-            <div class="method-card" onclick="window.location.href='/bitplane'">
-                <div class="method-icon"><i class="fas fa-layer-group"></i></div>
-                <h2>Bit-Plane Slicing</h2>
-                <p class="method-description">
-                    Decompose an image into bit-planes and selectively encrypt the most significant data for layered protection.
-                </p>
+            <div class="method-card beta" aria-disabled="true" title="Bit-Plane Slicing is in beta (coming soon)">
+                <div class="method-content">
+                    <div class="method-icon"><i class="fas fa-layer-group"></i></div>
+                    <h2>Bit-Plane Slicing</h2>
+                    <p class="method-description">
+                        Decompose an image into bit-planes and selectively encrypt the most significant data for layered protection.
+                    </p>
+                </div>
+                <div class="beta-badge">Beta</div>
             </div>
 
             <div class="method-card" onclick="window.location.href='/neural_network'">
-                <div class="method-icon"><i class="fas fa-brain"></i></div>
-                <h2>Neural Network Encryption</h2>
-                <p class="method-description">
-                    Use a trained AI model to perform a complex, learned transformation on pixel data for cutting-edge security.
-                </p>
+                <div class="method-content">
+                    <div class="method-icon"><i class="fas fa-brain"></i></div>
+                    <h2>Neural Network Encryption</h2>
+                    <p class="method-description">
+                        Use a trained AI model to perform a complex, learned transformation on pixel data for cutting-edge security.
+                    </p>
+                </div>
             </div>
-            
+
+            <div class="method-card beta" aria-disabled="true" title="DNA Encryption is in beta (coming soon)">
+                <div class="method-content">
+                    <div class="method-icon"><i class="fas fa-dna"></i></div>
+                    <h2>DNA Encryption</h2>
+                    <p class="method-description">
+                        Encode pixel data using DNA-based encoding schemes for an additional layer of bio-inspired cryptographic protection.
+                    </p>
+                </div>
+                <div class="beta-badge">Beta</div>
+            </div>
+
         </div>
     </main>
+
     <footer class="site-footer">
         <p>
-            For any query, contact us at: 
-            <a href="mailto:namansaini720@gmail.com">namansaini720@gmail.com</a> | 
+            For any query, contact us at:
+            <a href="mailto:namansaini720@gmail.com">namansaini720@gmail.com</a> |
             <a href="tel:+918529685238">+91 8529685238</a>
         </p>
     </footer>
+
 </body>
 </html>
